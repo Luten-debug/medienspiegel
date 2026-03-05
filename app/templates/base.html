@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medienspiegel - Giga Factory Berlin-Brandenburg</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L1 12h3v9h6v-6h4v6h6v-9h3L12 1zm0 3.5L18.5 11H17v8h-3v-6H10v6H7v-8H5.5L12 4.5z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2l10 10h-3v9h-5v-6h-4v6H5v-9H2L12 2z"/></svg>
+                </div>
+                <div>
+                    <h1>Medienspiegel</h1>
+                    <span class="subtitle">Giga Factory Berlin-Brandenburg</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary"
+                        hx-post="/api/collect"
+                        hx-target="#collection-status"
+                        hx-swap="innerHTML">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                    Jetzt sammeln
+                </button>
+                <button class="btn btn-secondary"
+                        hx-post="/api/summarize"
+                        hx-target="#mail-status"
+                        hx-swap="innerHTML">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.674M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    KI Zusammenfassen
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div id="collection-status">
+            {% block collection_status %}{% endblock %}
+        </div>
+        <div id="mail-status"></div>
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <span>Medienspiegel &mdash; Automatisierte Medienbeobachtung für die Giga Factory</span>
+    </footer>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
