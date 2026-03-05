@@ -68,12 +68,13 @@ def collect():
                 # Auto-Kategorisierung + Zitate generieren
                 api_key = config.get('api_keys', {}).get('anthropic', '')
                 if api_key and new > 0:
-                    # Erst kaputte Meta-Kommentar-Zitate bereinigen
+                    # Erst kaputte Meta-Kommentar-Zitate bereinigen + Themen remappen
                     try:
-                        from ..summarizer import cleanup_meta_summaries
+                        from ..summarizer import cleanup_meta_summaries, remap_all_topics
                         cleanup_meta_summaries(db_path)
+                        remap_all_topics(db_path)
                     except Exception as e:
-                        print("  [WARN] Meta-Cleanup: {}".format(str(e)[:80]))
+                        print("  [WARN] Cleanup: {}".format(str(e)[:80]))
 
                     _collection_progress['current_term'] = 'Kategorisierung...'
                     try:
