@@ -3,7 +3,7 @@
 from datetime import date, datetime, timedelta
 from flask import Blueprint, render_template, current_app, request
 
-from ..database import get_articles, get_article_stats, get_collection_runs, get_db
+from ..database import get_articles, get_article_stats, get_collection_runs, get_db, get_alerts
 
 dashboard_bp = Blueprint('dashboard', __name__)
 
@@ -108,6 +108,9 @@ def index():
 
     topic_groups = group_articles_by_topic(articles)
 
+    # Alerts laden
+    alerts = get_alerts(db_path)
+
     return render_template('dashboard.html',
                            articles=articles,
                            topic_groups=topic_groups,
@@ -122,4 +125,5 @@ def index():
                            filter_source=source,
                            filter_topic=topic,
                            sort_by=sort_by,
-                           news_overview=news_overview)
+                           news_overview=news_overview,
+                           alerts=alerts)
