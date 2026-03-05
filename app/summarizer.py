@@ -207,9 +207,88 @@ Schreibe auf Deutsch, als reinen Fliesstext. KEIN Markdown, keine Ueberschriften
         print("  [INFO] News-Ueberblick generiert")
 
 
+# Keywords die auf bestimmte Kategorien hinweisen (fuer Fuzzy-Matching)
+_TOPIC_KEYWORDS = {
+    'Betriebsrat & Gewerkschaft': ['betriebsrat', 'gewerkschaft', 'ig metall', 'arbeitnehmer',
+                                    'streik', 'tarifvertrag', 'arbeitsrecht', 'arbeitskonflik',
+                                    'works council', 'union', 'arbeitsverhältnis'],
+    'Produktion & Ausbau': ['produktion', 'ausbau', 'erweiterung', 'fertigung', 'kapazität',
+                            'fabrik', 'werk', 'model y', 'batterie', 'lieferkette'],
+    'Arbeitsmarkt & Personal': ['jobs', 'stellen', 'personal', 'einstellung', 'entlassung',
+                                'arbeitsmarkt', 'fachkräfte', 'mitarbeiter', 'beschäftigt'],
+    'Umwelt & Genehmigungen': ['umwelt', 'wasser', 'genehmigung', 'naturschutz', 'klima',
+                               'rodung', 'wald', 'abwasser', 'protest', 'demo'],
+    'Proteste & Sicherheit': ['protest', 'sicherheit', 'brandanschlag', 'sabotage',
+                              'aktivist', 'blockade', 'polizei'],
+    'Politik & Standort': ['politik', 'standort', 'gemeinde', 'bürgermeister', 'regierung',
+                           'minister', 'genehmigung', 'planung', 'ansiedlung'],
+    'Elon Musk & Image': ['elon musk', 'musk', 'image', 'kontroverse', 'twitter', 'doge',
+                          'afd', 'politisch'],
+    'Markt & Wettbewerb': ['markt', 'wettbewerb', 'absatz', 'verkauf', 'konkurrenz',
+                           'byd', 'volkswagen', 'elektroauto', 'marktanteil'],
+    'Technologie & Batterie': ['technologie', 'batterie', 'akku', 'innovation', 'software',
+                               'roboter', 'ki', 'autopilot', 'robotaxi', 'cybercab'],
+}
+
+
+def _normalize_topic(topic):
+    """Mappe aehnliche Themen auf vordefinierte Kategorien."""
+    if not topic:
+        return 'Sonstiges'
+
+    # Exakter Treffer?
+    if topic in TOPIC_CATEGORIES:
+        return topic
+
+    # Fuzzy-Match: Pruefe ob die Topic-Keywords in der Kategorie-Bezeichnung vorkommen
+    topic_lower = topic.lower()
+    best_match = None
+    best_score = 0
+
+    for category, keywords in _TOPIC_KEYWORDS.items():
+        score = sum(1 for kw in keywords if kw in topic_lower)
+        if score > best_score:
+            best_score = score
+            best_match = category
+
+    # Mindestens 1 Keyword-Match noetig fuer Remapping
+    if best_match and best_score >= 1:
+        return best_match
+
+    # Kein Match: neue Kategorie erlauben (aber sauber formatiert)
+    return topic.strip()
+
+
+def remap_all_topics(db_path):
+    """Mappe alle bestehenden Artikel-Themen auf normalisierte Kategorien."""
+    conn = get_db(db_path)
+    rows = conn.execute(
+        "SELECT id, topic_cluster FROM articles WHERE topic_cluster IS NOT NULL"
+    ).fetchall()
+
+    remapped = 0
+    for row in rows:
+        old_topic = row['topic_cluster']
+        new_topic = _normalize_topic(old_topic)
+        if new_topic != old_topic:
+            conn.execute(
+                "UPDATE articles SET topic_cluster = ? WHERE id = ?",
+                (new_topic, row['id'])
+            )
+            remapped += 1
+
+    if remapped > 0:
+        conn.commit()
+        print("  [INFO] {} Themen remapped".format(remapped))
+    conn.close()
+    return remapped
+
+
 def _summarize_article(article, api_key, model="claude-haiku-4-5-20251001"):
     """Generiere Zusammenfassung, Reichweite und Themencluster fuer einen Artikel."""
     lang = article.get('language', 'de') or 'de'
+
+    categories_str = ', '.join(TOPIC_CATEGORIES)
 
     prompt = """{lang_hint}Artikel: "{title}" ({source})
 Text: {snippet}
@@ -223,14 +302,17 @@ WICHTIG:
 - Wenn wenig Text vorhanden: formuliere 1-2 Kernaussagen basierend auf dem Titel.
 - Wenn Zitate im Text stehen: gib sie in Anfuehrungszeichen wieder.
 - Trenne mehrere Aussagen mit Zeilenumbruch.
-- Schreibe direkt und faktisch. Max 80 Worte.{topic_hint}
+- Schreibe direkt und faktisch. Max 80 Worte.
+
+THEMA: Waehle eine dieser Kategorien. Nur wenn der Artikel wirklich in KEINE passt, darfst du eine neue kurze Kategorie erstellen:
+{categories}
 
 JSON: {{"zusammenfassung":"...","reichweite":"Ueberregional|Regional|Fachpresse","thema":"..."}}""".format(
         lang_hint="Auf Deutsch. " if lang != 'de' else "",
         title=article.get('title', ''),
         source=article.get('source_name', 'Unbekannt'),
         snippet=article.get('snippet', '')[:400],
-        topic_hint="\nThema: {}".format(', '.join(TOPIC_CATEGORIES)) if not article.get('topic_cluster') else "\nThema: {}".format(article.get('topic_cluster'))
+        categories=categories_str
     )
 
     resp = requests.post(
@@ -257,6 +339,9 @@ JSON: {{"zusammenfassung":"...","reichweite":"Ueberregional|Regional|Fachpresse"
     summary = result.get('zusammenfassung', text.strip())
     reach = result.get('reichweite', 'Unbekannt')
     topic = result.get('thema', article.get('topic_cluster') or 'Sonstiges')
+
+    # Thema validieren: aehnliche Kategorien auf vordefinierte mappen
+    topic = _normalize_topic(topic)
 
     # Schutz: Meta-Kommentare erkennen und durch Fallback ersetzen
     meta_phrases = ['ich kann', 'benoetige', 'benötige', 'artikeltext', 'bereitstellen',
