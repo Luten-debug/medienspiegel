@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: medienspiegel
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.6"
+    disk:
+      name: medienspiegel-data
+      mountPath: /data
+      sizeGB: 1
