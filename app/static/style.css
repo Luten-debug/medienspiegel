@@ -38,32 +38,11 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* === Card Entry Animation === */
-@keyframes cardFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(16px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
+/* === Card Scroll Animation === */
+/* Karten starten unsichtbar — scroll JS steuert das Einblenden */
 .article-card, .tweet-card {
-    animation: cardFadeIn 0.4s ease-out both;
+    opacity: 0;
 }
-/* Gestaffelte Animation: jede Karte etwas spaeter */
-.article-list > :nth-child(1) { animation-delay: 0.03s; }
-.article-list > :nth-child(2) { animation-delay: 0.06s; }
-.article-list > :nth-child(3) { animation-delay: 0.09s; }
-.article-list > :nth-child(4) { animation-delay: 0.12s; }
-.article-list > :nth-child(5) { animation-delay: 0.15s; }
-.article-list > :nth-child(6) { animation-delay: 0.18s; }
-.article-list > :nth-child(7) { animation-delay: 0.21s; }
-.article-list > :nth-child(8) { animation-delay: 0.24s; }
-.article-list > :nth-child(9) { animation-delay: 0.27s; }
-.article-list > :nth-child(10) { animation-delay: 0.30s; }
-.article-list > :nth-child(n+11) { animation-delay: 0.33s; }
 
 /* Stat-Cards auch animieren */
 .stat-card {
