@@ -1,0 +1,60 @@
+# Medienspiegel Konfiguration - Giga Factory Berlin-Brandenburg
+# Kopiere diese Datei nach config.yaml und passe die Werte an.
+# Auf Render.com: API-Keys als Umgebungsvariablen setzen (ANTHROPIC_API_KEY)
+
+languages:
+  - lang: de
+    country: DE
+    search_terms:
+      - '"Gigafactory" Grünheide'
+      - '"Gigafactory Berlin"'
+      - '"Tesla Grünheide"'
+      - '"Giga Berlin"'
+
+  - lang: en
+    country: GB
+    search_terms:
+      - '"Giga Berlin"'
+      - '"Tesla Gruenheide"'
+      - 'Tesla Berlin factory'
+
+  - lang: pl
+    country: PL
+    search_terms:
+      - 'Tesla Grünheide'
+      - '"Gigafactory Berlin"'
+
+# API Keys (oder als Umgebungsvariable ANTHROPIC_API_KEY)
+api_keys:
+  anthropic: ""
+  newsapi: ""
+
+# Gmail Einstellungen (oder Umgebungsvariablen MAIL_SENDER, MAIL_PASSWORD, MAIL_RECIPIENTS)
+mail:
+  enabled: false
+  sender: ""
+  password: ""
+  recipients:
+    - ""
+  subject_prefix: "Medienspiegel Giga Factory"
+
+schedule:
+  enabled: false
+  time: "08:00"
+
+rss_feeds: []
+
+twitter:
+  enabled: true
+  max_tweets: 30
+  accounts:
+    - Gf4Tesla
+    - alex_avoigt
+    - Teslaconomics
+    - SawyerMerritt
+    - TeslaEurope
+    - Tesla
+
+collection:
+  max_articles_per_source: 30
+  request_delay: 1.0
