@@ -9,12 +9,10 @@ from ..database import (
     get_articles_without_summary, get_article_stats, get_collection_runs,
     get_alerts, create_alert, delete_alert, toggle_alert, check_alerts
 )
-from ..collectors import run_collection
+from ..collectors import run_collection, _global_collection_lock
 
 api_bp = Blueprint('api', __name__)
 
-# Einfacher Lock um gleichzeitige Collections zu verhindern
-_collection_lock = threading.Lock()
 # Fortschritts-Tracking fuer die Sammlung
 _collection_progress = {
     'phase': '',           # 'collecting', 'done', 'error'
@@ -30,18 +28,18 @@ _collection_progress = {
 @api_bp.route('/collect', methods=['POST'])
 def collect():
     """Starte eine neue Mediensammlung."""
-    if not _collection_lock.acquire(blocking=False):
+    # Pruefe ob bereits eine Sammlung laeuft (globaler Lock)
+    if _global_collection_lock.locked():
         return '<div class="notice" role="alert">Sammlung läuft bereits...</div>', 409
 
     config = current_app.config['MEDIENSPIEGEL']
     db_path = current_app.config['DB_PATH']
 
-    # Anzahl Suchbegriffe berechnen
+    # Anzahl Suchbegriffe berechnen (Bing + Google = 2x, Twitter = 1)
     languages = config.get('languages', [])
     total_terms = sum(len(lc.get('search_terms', [])) for lc in languages)
-    # Twitter zaehlt als 1 (holt alle Accounts auf einmal)
     twitter_enabled = config.get('twitter', {}).get('enabled', False)
-    all_terms = total_terms + (1 if twitter_enabled else 0)
+    all_terms = (total_terms * 2) + (1 if twitter_enabled else 0)
 
     # Fortschritt zuruecksetzen
     _collection_progress.update({
@@ -60,15 +58,21 @@ def collect():
     def _do_collection():
         try:
             with app.app_context():
+                # run_collection verwaltet seinen eigenen Lock
                 run_id, found, new, errors = run_collection(
                     config, db_path, progress_cb=_progress_cb)
+
+                if run_id is None:
+                    _collection_progress['phase'] = 'error'
+                    _collection_progress['detail'] = 'Sammlung bereits aktiv'
+                    return
+
                 _collection_progress['found'] = found
                 _collection_progress['new'] = new
 
                 # Auto-Kategorisierung + Zitate generieren
                 api_key = config.get('api_keys', {}).get('anthropic', '')
                 if api_key and new > 0:
-                    # Erst kaputte Meta-Kommentar-Zitate bereinigen + Themen remappen
                     try:
                         from ..summarizer import cleanup_meta_summaries, remap_all_topics
                         cleanup_meta_summaries(db_path)
@@ -83,7 +87,6 @@ def collect():
                     except Exception as e:
                         print("  [WARN] Auto-Kategorisierung: {}".format(str(e)[:80]))
 
-                    # Automatisch Zitate fuer neue Artikel generieren
                     _collection_progress['current_term'] = 'Zitate generieren...'
                     try:
                         from ..summarizer import summarize_new_articles
@@ -91,13 +94,12 @@ def collect():
                     except Exception as e:
                         print("  [WARN] Auto-Zitate: {}".format(str(e)[:80]))
 
-                # Alerts pruefen fuer neue Artikel
+                # Alerts pruefen
                 if new > 0:
                     try:
                         _collection_progress['current_term'] = 'Alerts prüfen...'
                         from ..database import get_db
                         conn = get_db(db_path)
-                        # IDs der neuesten Artikel holen
                         new_rows = conn.execute(
                             "SELECT id FROM articles ORDER BY id DESC LIMIT ?",
                             (new,)).fetchall()
@@ -105,10 +107,8 @@ def collect():
                         new_ids = [r['id'] for r in new_rows]
                         alert_hits = check_alerts(db_path, new_ids)
 
-                        # Alert-Mails senden
                         if alert_hits and config.get('mail', {}).get('enabled'):
                             from ..mailer import send_alert_mail
-                            # Gruppiere nach Alert
                             alert_groups = {}
                             for alert_d, art_d in alert_hits:
                                 aid = alert_d['id']
@@ -128,8 +128,6 @@ def collect():
         except Exception as e:
             _collection_progress['phase'] = 'error'
             _collection_progress['detail'] = str(e)[:100]
-        finally:
-            _collection_lock.release()
 
     thread = threading.Thread(target=_do_collection, daemon=True)
     thread.start()
@@ -143,7 +141,7 @@ def collect():
 @api_bp.route('/collection-status')
 def collection_status():
     """Prüfe den Status der laufenden Sammlung (für HTMX Polling)."""
-    if _collection_lock.locked():
+    if _global_collection_lock.locked():
         terms_done = _collection_progress.get('terms_done', 0)
         terms_total = _collection_progress.get('terms_total', 1)
         current_term = _collection_progress.get('current_term', '')
@@ -294,7 +292,7 @@ def articles():
     """Hole gefilterte Artikel-Liste (HTMX Partial)."""
     db_path = current_app.config['DB_PATH']
 
-    time_range = request.args.get('range', '3d')
+    time_range = request.args.get('range', '7d')
     source_type = request.args.get('source', '')
     topic = request.args.get('topic', '')
     search = request.args.get('search', '')
