@@ -6,7 +6,8 @@ from flask import Blueprint, render_template, current_app, request, jsonify
 
 from ..database import (
     get_articles, update_article_relevance, get_collection_run,
-    get_articles_without_summary, get_article_stats, get_collection_runs
+    get_articles_without_summary, get_article_stats, get_collection_runs,
+    get_alerts, create_alert, delete_alert, toggle_alert, check_alerts
 )
 from ..collectors import run_collection
 
@@ -73,6 +74,38 @@ def collect():
                         categorize_uncategorized(db_path, api_key)
                     except Exception as e:
                         print("  [WARN] Auto-Kategorisierung: {}".format(str(e)[:80]))
+
+                # Alerts pruefen fuer neue Artikel
+                if new > 0:
+                    try:
+                        _collection_progress['current_term'] = 'Alerts prüfen...'
+                        from ..database import get_db
+                        conn = get_db(db_path)
+                        # IDs der neuesten Artikel holen
+                        new_rows = conn.execute(
+                            "SELECT id FROM articles ORDER BY id DESC LIMIT ?",
+                            (new,)).fetchall()
+                        conn.close()
+                        new_ids = [r['id'] for r in new_rows]
+                        alert_hits = check_alerts(db_path, new_ids)
+
+                        # Alert-Mails senden
+                        if alert_hits and config.get('mail', {}).get('enabled'):
+                            from ..mailer import send_alert_mail
+                            # Gruppiere nach Alert
+                            alert_groups = {}
+                            for alert_d, art_d in alert_hits:
+                                aid = alert_d['id']
+                                if aid not in alert_groups:
+                                    alert_groups[aid] = (alert_d, [])
+                                alert_groups[aid][1].append(art_d)
+                            for aid, (alert_d, arts) in alert_groups.items():
+                                try:
+                                    send_alert_mail(config, alert_d, arts)
+                                except Exception as e:
+                                    print("  [ALERT] Mail-Fehler: {}".format(str(e)[:80]))
+                    except Exception as e:
+                        print("  [WARN] Alert-Check: {}".format(str(e)[:80]))
 
                 _collection_progress['phase'] = 'done'
                 _collection_progress['detail'] = '{} gefunden, {} neu'.format(found, new)
@@ -300,6 +333,53 @@ def reset_relevance(article_id):
             hx-post="/api/articles/{0}/irrelevant"
             hx-target="#relevance-{0}"
             hx-swap="innerHTML">Irrelevant</button>'''.format(article_id)
+
+
+# === Alert API Routes ===
+
+@api_bp.route('/alerts')
+def alerts_list():
+    """Liste aller Alerts (HTMX Partial)."""
+    db_path = current_app.config['DB_PATH']
+    alerts = get_alerts(db_path)
+    return render_template('partials/alerts_list.html', alerts=alerts)
+
+
+@api_bp.route('/alerts', methods=['POST'])
+def alerts_create():
+    """Erstelle einen neuen Alert."""
+    db_path = current_app.config['DB_PATH']
+    name = request.form.get('name', '').strip()
+    if not name:
+        return '<div class="notice" role="alert">Bitte einen Namen eingeben.</div>', 400
+
+    source_pattern = request.form.get('source_pattern', '').strip() or None
+    topic_pattern = request.form.get('topic_pattern', '').strip() or None
+    keyword_pattern = request.form.get('keyword_pattern', '').strip() or None
+    email_to = request.form.get('email_to', '').strip() or None
+
+    create_alert(db_path, name, source_pattern, topic_pattern, keyword_pattern, email_to)
+
+    alerts = get_alerts(db_path)
+    return render_template('partials/alerts_list.html', alerts=alerts)
+
+
+@api_bp.route('/alerts/<int:alert_id>', methods=['DELETE'])
+def alerts_delete(alert_id):
+    """Loesche einen Alert."""
+    db_path = current_app.config['DB_PATH']
+    delete_alert(db_path, alert_id)
+    alerts = get_alerts(db_path)
+    return render_template('partials/alerts_list.html', alerts=alerts)
+
+
+@api_bp.route('/alerts/<int:alert_id>/toggle', methods=['POST'])
+def alerts_toggle(alert_id):
+    """Schalte einen Alert an/aus."""
+    db_path = current_app.config['DB_PATH']
+    toggle_alert(db_path, alert_id)
+    alerts = get_alerts(db_path)
+    return render_template('partials/alerts_list.html', alerts=alerts)
 
 
 @api_bp.route('/send-mail', methods=['POST'])
