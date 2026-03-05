@@ -1,0 +1,43 @@
+{% if topic_groups is defined and topic_groups %}
+{# Gruppierte Ansicht nach Thema #}
+{% for group in topic_groups %}
+<div class="topic-group">
+    <div class="topic-group-header">
+        <h2 class="topic-group-title">{{ group.topic }}</h2>
+        <span class="topic-group-count">{{ group.articles | length }}</span>
+    </div>
+    <div class="article-list">
+    {% set ns = namespace(aidx=0) %}
+    {% for article in group.articles %}
+        {% if article.source_type == 'twitter' %}
+            {% set _wc = '' %}
+        {% else %}
+            {% set _wc = ['card-w1','card-w2','card-w3','card-w4','card-w5','card-w6','card-w7','card-w8'][ns.aidx % 8] %}
+            {% set ns.aidx = ns.aidx + 1 %}
+        {% endif %}
+        {% include "partials/_article_card.html" %}
+    {% endfor %}
+    </div>
+</div>
+{% endfor %}
+{% elif articles %}
+{# Flache Ansicht (Fallback) #}
+<div class="article-list">
+{% set ns = namespace(aidx=0) %}
+{% for article in articles %}
+    {% if article.source_type == 'twitter' %}
+        {% set _wc = '' %}
+    {% else %}
+        {% set _wc = ['card-w1','card-w2','card-w3','card-w4','card-w5','card-w6','card-w7','card-w8'][ns.aidx % 8] %}
+        {% set ns.aidx = ns.aidx + 1 %}
+    {% endif %}
+    {% include "partials/_article_card.html" %}
+{% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <h3>Keine Artikel gefunden</h3>
+    <p>Klicke <strong>Jetzt sammeln</strong> um Medienberichte zur Giga Factory zu sammeln.</p>
+</div>
+{% endif %}
