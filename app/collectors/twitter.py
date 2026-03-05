@@ -20,6 +20,11 @@ DEFAULT_ACCOUNTS = [
     'Tesla',          # Tesla official
 ]
 
+# Accounts deren Posts IMMER relevant sind (kein Keyword-Filter noetig)
+ALWAYS_RELEVANT_ACCOUNTS = {
+    'gf4tesla', 'teslaeurope', 'tesla',
+}
+
 # Suchbegriffe um relevante Tweets zu filtern
 RELEVANCE_KEYWORDS = [
     'giga berlin', 'gigafactory', 'gruenheide', 'grünheide',
@@ -342,6 +347,12 @@ class TwitterCollector(BaseCollector):
 
     def _is_relevant(self, tweet, search_term):
         """Pruefe ob ein Tweet relevant fuer Giga Berlin ist."""
+        # Bekannte Tesla-Accounts sind immer relevant
+        user = tweet.get('user', {})
+        handle = (user.get('screen_name', '') or '').lower()
+        if handle in ALWAYS_RELEVANT_ACCOUNTS:
+            return True
+
         text = (tweet.get('full_text', '') or tweet.get('text', '')).lower()
         # Pruefe Suchbegriff
         if search_term and search_term.lower().strip('"') in text:
