@@ -206,12 +206,13 @@ def create_app():
     config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.yaml')
     example_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.example.yaml')
 
-    if not os.path.exists(config_path):
-        # config.example.yaml als config.yaml kopieren
-        import shutil
+    # Immer config.example.yaml als config.yaml verwenden
+    # (API-Keys kommen aus Umgebungsvariablen, nicht aus der Datei)
+    import shutil
+    if os.path.exists(example_path):
         shutil.copy(example_path, config_path)
-        print("\n  [INFO] config.yaml wurde aus config.example.yaml erstellt.")
-        print("  Bitte config.yaml bearbeiten und API-Keys eintragen.\n")
+    elif not os.path.exists(config_path):
+        print("\n  [FEHLER] Weder config.yaml noch config.example.yaml gefunden!\n")
 
     medienspiegel_config = load_config(config_path)
     app.config['MEDIENSPIEGEL'] = medienspiegel_config
