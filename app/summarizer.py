@@ -214,14 +214,19 @@ def _summarize_article(article, api_key, model="claude-haiku-4-5-20251001"):
     prompt = """{lang_hint}"{title}" ({source})
 {snippet}
 
-Aufgabe: Extrahiere das wichtigste ZITAT oder die praegnanteste Aussage aus dem Artikeltext.
+Aufgabe: Extrahiere die wichtigsten ZITATE und Kernaussagen aus dem Artikeltext.
 
 Regeln:
-- Suche die interessanteste, aussagekraeftigste Stelle im Text — eine direkte Aussage, ein Fakt, eine Meinung.
-- Gib das Zitat woertlich wieder, so wie es im Text steht (in Anfuehrungszeichen).
-- Falls kein woertliches Zitat vorhanden: formuliere die Kernaussage als kurzen, praegnanten Satz (1-2 Saetze, max 40 Worte).
-- Bevorzuge konkrete Zahlen, Fakten, Aussagen von Personen.
-- KEIN "Der Artikel berichtet..." oder aehnliche Meta-Formulierungen. Nur das Zitat/die Aussage selbst.{topic_hint}
+- Suche 2-3 praegnante Stellen: direkte Zitate von Personen, zentrale Fakten, starke Aussagen.
+- Gib Zitate woertlich in Anfuehrungszeichen wieder, mit Quelle/Person falls bekannt.
+- Format: Mehrere Zitate/Aussagen mit Zeilenumbruch getrennt. Beispiel:
+  „Zitat 1" — Person/Quelle
+  Faktische Kernaussage 2.
+  „Zitat 3" — Person
+- Falls wenig Inhalt: ein einzelnes praegnantes Zitat oder die Kernaussage (1-2 Saetze).
+- Bevorzuge konkrete Zahlen, Daten, Namen, Meinungen.
+- KEIN "Der Artikel berichtet..." oder aehnliche Meta-Formulierungen.
+- Maximal 100 Worte insgesamt.{topic_hint}
 
 JSON: {{"zusammenfassung":"...","reichweite":"Ueberregional|Regional|Fachpresse","thema":"..."}}""".format(
         lang_hint="Auf Deutsch. " if lang != 'de' else "",
