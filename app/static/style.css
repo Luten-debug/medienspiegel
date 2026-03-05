@@ -424,37 +424,37 @@ main {
     text-align: center;
 }
 
-/* Article List — Mehrspalten-Layout */
+/* Article List — Variable Breiten, gleichmaessige Abstaende */
 .article-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
-    align-items: flex-start;
+    gap: 14px;
+    align-items: stretch;
 }
 
-/* Regular Article Card — abwechselnd breite Kacheln */
+/* Regular Article Card */
 .article-card {
     background: var(--bg-white);
     border-radius: var(--radius-lg);
     padding: 16px 20px;
     border: 1px solid var(--border-light);
-    transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
     box-shadow: var(--shadow-xs);
-    /* Fallback */
     flex: 1 1 calc(50% - 8px);
-    min-width: 260px;
+    min-width: 280px;
     max-width: 100%;
+    display: flex;
+    flex-direction: column;
 }
-/* Abwechselnde Breiten-Paare fuer visuellen Rhythmus
-   Muster: schmal+breit, breit+schmal, 3er-Reihe, volle Breite */
-.article-card.card-w1 { flex: 1 1 calc(35% - 8px); }   /* schmal */
-.article-card.card-w2 { flex: 1 1 calc(65% - 8px); }   /* breit  → Paar 1 */
-.article-card.card-w3 { flex: 1 1 calc(58% - 8px); }   /* breit */
-.article-card.card-w4 { flex: 1 1 calc(42% - 8px); }   /* schmal → Paar 2 */
-.article-card.card-w5 { flex: 1 1 calc(30% - 8px); min-width: 220px; }   /* eng */
-.article-card.card-w6 { flex: 1 1 calc(36% - 8px); }   /* eng */
-.article-card.card-w7 { flex: 1 1 calc(34% - 8px); }   /* eng → 3er Reihe */
-.article-card.card-w8 { flex: 1 1 100%; }               /* volle Breite */
+/* Abwechselnde Breiten fuer visuellen Rhythmus */
+.article-card.card-w1 { flex: 1 1 calc(38% - 8px); }
+.article-card.card-w2 { flex: 1 1 calc(62% - 8px); }
+.article-card.card-w3 { flex: 1 1 calc(56% - 8px); }
+.article-card.card-w4 { flex: 1 1 calc(44% - 8px); }
+.article-card.card-w5 { flex: 1 1 calc(33% - 8px); min-width: 240px; }
+.article-card.card-w6 { flex: 1 1 calc(34% - 8px); }
+.article-card.card-w7 { flex: 1 1 calc(33% - 8px); }
+.article-card.card-w8 { flex: 1 1 100%; }
 .article-card:hover {
     border-color: #ccc;
     box-shadow: var(--shadow);
@@ -650,8 +650,9 @@ main {
     background: var(--bg);
     border-radius: var(--radius);
     padding: 10px 0;
-    /* Tweets immer volle Breite */
-    flex: 1 1 100%;
+    /* Tweets im normalen Grid-Flow */
+    flex: 1 1 calc(50% - 8px);
+    min-width: 280px;
 }
 .tweet-embed-wrap {
     margin: 0;
@@ -900,7 +901,7 @@ footer {
     .filter-select { width: 100%; max-width: 100%; }
     .search-wrapper { min-width: 100%; }
     .article-card, .article-card[class*="card-w"],
-    .tweet-card { flex: 1 1 100% !important; padding: 14px 16px; }
+    .tweet-card { flex: 1 1 100% !important; min-width: 100% !important; padding: 14px 16px; }
     .article-card:hover { transform: none; }
     .article-title { font-size: 0.9rem; }
     .article-top { flex-direction: column; align-items: flex-start; gap: 3px; }
@@ -919,22 +920,25 @@ footer {
     .alert-input-sm { min-width: 100%; }
 }
 
-/* === Scroll-Animation === */
+/* === Scroll-Animation (stark) === */
 .scroll-animate {
     opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(60px) scale(0.95);
+    filter: blur(4px);
 }
 .scroll-visible {
-    animation: scrollReveal 0.5s ease-out forwards;
+    animation: scrollReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 @keyframes scrollReveal {
     from {
         opacity: 0;
-        transform: translateY(24px);
+        transform: translateY(60px) scale(0.95);
+        filter: blur(4px);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
+        filter: blur(0);
     }
 }
 
