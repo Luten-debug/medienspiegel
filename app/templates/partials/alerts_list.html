@@ -1,0 +1,53 @@
+{% if alerts %}
+<div class="alerts-items">
+{% for alert in alerts %}
+<div class="alert-item {{ 'disabled' if not alert.enabled }}">
+    <div class="alert-item-info">
+        <div class="alert-item-name">
+            <span class="alert-status-dot {{ 'active' if alert.enabled else 'inactive' }}"></span>
+            {{ alert.name }}
+        </div>
+        <div class="alert-item-filters">
+            {% if alert.source_pattern %}
+            <span class="alert-filter-tag">Quelle: {{ alert.source_pattern }}</span>
+            {% endif %}
+            {% if alert.topic_pattern %}
+            <span class="alert-filter-tag">Thema: {{ alert.topic_pattern }}</span>
+            {% endif %}
+            {% if alert.keyword_pattern %}
+            <span class="alert-filter-tag">Keyword: {{ alert.keyword_pattern }}</span>
+            {% endif %}
+            {% if alert.email_to %}
+            <span class="alert-filter-tag email">{{ alert.email_to }}</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="alert-item-actions">
+        <button class="alert-action-btn"
+                hx-post="/api/alerts/{{ alert.id }}/toggle"
+                hx-target="#alerts-container"
+                hx-swap="innerHTML"
+                title="{{ 'Deaktivieren' if alert.enabled else 'Aktivieren' }}">
+            {% if alert.enabled %}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 11-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+            {% else %}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+            {% endif %}
+        </button>
+        <button class="alert-action-btn delete"
+                hx-delete="/api/alerts/{{ alert.id }}"
+                hx-target="#alerts-container"
+                hx-swap="innerHTML"
+                hx-confirm="Alert '{{ alert.name }}' wirklich löschen?"
+                title="Löschen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+        </button>
+    </div>
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div class="alerts-empty">
+    <p>Keine Alerts konfiguriert. Erstelle einen Alert um bei bestimmten Themen oder Quellen benachrichtigt zu werden.</p>
+</div>
+{% endif %}
