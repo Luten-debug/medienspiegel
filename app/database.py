@@ -86,6 +86,12 @@ def init_db(db_path):
         except sqlite3.OperationalError:
             pass  # Spalte existiert bereits
 
+    # Zombie-Runs aufraumen: Alle 'running' Runs als 'aborted' markieren (Neustart)
+    conn.execute(
+        """UPDATE collection_runs SET status = 'aborted', finished_at = ?
+           WHERE status = 'running'""",
+        (datetime.utcnow().isoformat(),)
+    )
     conn.commit()
     conn.close()
 
