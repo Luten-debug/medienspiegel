@@ -60,47 +60,21 @@ class GoogleNewsCollector(BaseCollector):
 
         headers = self._get_headers(lang, country)
 
-        # Bis zu 3 Versuche mit steigendem Timeout
-        last_error = None
-        for attempt in range(3):
-            try:
-                timeout = 15 + (attempt * 10)  # 15s, 25s, 35s
-                resp = requests.get(url, timeout=timeout, headers=headers)
+        # Nur 1 Versuch mit kurzem Timeout (Bing News ist jetzt primaere Quelle)
+        # Google News blockiert oft Server-IPs, daher nicht zu lange warten
+        try:
+            resp = requests.get(url, timeout=10, headers=headers)
 
-                if resp.status_code == 429:
-                    # Rate limited — kurz warten und erneut versuchen
-                    wait = 2 + (attempt * 3)
-                    print("  [Google News] Rate limited (429), warte {}s...".format(wait))
-                    time.sleep(wait)
-                    headers = self._get_headers(lang, country)  # Neuer UA
-                    continue
+            if resp.status_code in (403, 429):
+                # Geblockt oder Rate-Limited — nicht weiter versuchen
+                return []
 
-                if resp.status_code == 403:
-                    print("  [Google News] Zugriff verweigert (403) fuer: {}".format(search_term))
-                    # Neuer User-Agent beim naechsten Versuch
-                    headers = self._get_headers(lang, country)
-                    time.sleep(1)
-                    continue
+            resp.raise_for_status()
+            feed = feedparser.parse(resp.text)
 
-                resp.raise_for_status()
-                feed = feedparser.parse(resp.text)
-                break
-
-            except requests.exceptions.Timeout:
-                last_error = "Timeout nach {}s".format(timeout)
-                print("  [Google News] Timeout (Versuch {}/3): {}".format(
-                    attempt + 1, search_term))
-                continue
-            except requests.exceptions.RequestException as e:
-                last_error = str(e)[:80]
-                print("  [Google News] Fehler (Versuch {}/3): {}".format(
-                    attempt + 1, str(e)[:80]))
-                time.sleep(1)
-                continue
-        else:
-            # Alle Versuche gescheitert
-            print("  [Google News] Endgueltig fehlgeschlagen: {} ({})".format(
-                search_term, last_error))
+        except requests.exceptions.Timeout:
+            return []
+        except requests.exceptions.RequestException:
             return []
 
         articles = []
