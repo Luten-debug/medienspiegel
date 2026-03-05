@@ -17,13 +17,14 @@ function initScrollAnimations() {
     _scrollObserver = new IntersectionObserver(function(entries) {
         entries.forEach(function(entry) {
             if (entry.isIntersecting) {
+                entry.target.classList.remove('scroll-hidden');
                 entry.target.classList.add('scroll-visible');
                 _scrollObserver.unobserve(entry.target);
             }
         });
     }, {
-        threshold: 0.08,
-        rootMargin: '0px 0px -40px 0px'
+        threshold: 0.05,
+        rootMargin: '0px 0px -20px 0px'
     });
 
     // Alle Karten beobachten die noch nicht sichtbar sind
@@ -34,13 +35,13 @@ function initScrollAnimations() {
 
         // Karten die schon im Viewport sind gestaffelt einblenden
         var rect = card.getBoundingClientRect();
-        if (rect.top < window.innerHeight + 50) {
+        if (rect.top < window.innerHeight + 80) {
             card.style.animationDelay = staggerDelay + 'ms';
             card.classList.add('scroll-visible');
             staggerDelay += 60;
         } else {
-            // Karten ausserhalb des Viewports fuer Animation vorbereiten
-            card.classList.add('scroll-animate');
+            // Karten ausserhalb: verstecken + beobachten
+            card.classList.add('scroll-hidden');
             _scrollObserver.observe(card);
         }
     });
