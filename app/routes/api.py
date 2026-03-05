@@ -515,47 +515,66 @@ def send_mail():
 def debug_config():
     """Temporaerer Debug-Endpoint: Zeige Konfiguration auf Render."""
     import os
-    config = current_app.config['MEDIENSPIEGEL']
-    languages = config.get('languages', [])
-    total_terms = sum(len(lc.get('search_terms', [])) for lc in languages)
-    twitter = config.get('twitter', {})
-    api_key = config.get('api_keys', {}).get('anthropic', '')
-    schedule = config.get('schedule', {})
+    import traceback
+    try:
+        config = current_app.config['MEDIENSPIEGEL']
+        languages = config.get('languages', [])
+        total_terms = sum(len(lc.get('search_terms', [])) for lc in languages)
+        twitter = config.get('twitter', {})
+        api_key = config.get('api_keys', {}).get('anthropic', '')
+        schedule = config.get('schedule', {})
+        db_path = current_app.config['DB_PATH']
 
-    # Letzte Collection-Fehler
-    db_path = current_app.config['DB_PATH']
-    runs = get_collection_runs(db_path, limit=3)
-    run_info = []
-    for r in runs:
-        run_info.append('{}: {} found, {} new, status={}, errors={}'.format(
-            r.get('started_at', '?'), r.get('articles_found', 0),
-            r.get('articles_new', 0), r.get('status', '?'),
-            r.get('errors', '')[:200]))
+        # DB-Info (sicher)
+        total_articles = 0
+        twitter_articles = 0
+        run_info = []
+        try:
+            from ..database import get_db
+            conn = get_db(db_path)
+            total_articles = conn.execute("SELECT COUNT(*) as c FROM articles").fetchone()['c']
+            twitter_articles = conn.execute("SELECT COUNT(*) as c FROM articles WHERE source_type='twitter'").fetchone()['c']
+            conn.close()
+        except Exception as e:
+            run_info.append('DB error: {}'.format(str(e)[:200]))
 
-    # Artikel-Zaehler
-    from ..database import get_db
-    conn = get_db(db_path)
-    total_articles = conn.execute("SELECT COUNT(*) as c FROM articles").fetchone()['c']
-    twitter_articles = conn.execute("SELECT COUNT(*) as c FROM articles WHERE source_type='twitter'").fetchone()['c']
-    conn.close()
+        try:
+            runs = get_collection_runs(db_path, limit=3)
+            for r in runs:
+                run_info.append('{}: {} found, {} new, status={}'.format(
+                    r.get('started_at', '?')[:19], r.get('articles_found', 0),
+                    r.get('articles_new', 0), r.get('status', '?')))
+        except Exception as e:
+            run_info.append('Runs error: {}'.format(str(e)[:100]))
 
-    info = {
-        'languages': len(languages),
-        'total_search_terms': total_terms,
-        'terms_per_lang': [{'lang': lc.get('lang'), 'terms': len(lc.get('search_terms', []))} for lc in languages],
-        'twitter_enabled': twitter.get('enabled', False),
-        'twitter_accounts': twitter.get('accounts', []),
-        'has_anthropic_key': bool(api_key),
-        'anthropic_key_prefix': api_key[:12] + '...' if api_key else 'EMPTY',
-        'schedule_enabled': schedule.get('enabled', False),
-        'refresh_interval': schedule.get('refresh_interval', 'not set'),
-        'db_path': db_path,
-        'db_exists': os.path.exists(db_path),
-        'total_articles_in_db': total_articles,
-        'twitter_articles_in_db': twitter_articles,
-        'recent_runs': run_info,
-        'config_file': os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config.yaml')),
-        'env_anthropic': bool(os.environ.get('ANTHROPIC_API_KEY')),
-        'data_dir': os.environ.get('DATA_DIR', 'not set'),
-    }
-    return jsonify(info)
+        # Erste 3 Suchbegriffe pro Sprache
+        terms_preview = []
+        for lc in languages:
+            terms = lc.get('search_terms', [])
+            terms_preview.append({
+                'lang': lc.get('lang'),
+                'count': len(terms),
+                'first_3': terms[:3]
+            })
+
+        info = {
+            'languages': len(languages),
+            'total_search_terms': total_terms,
+            'terms_preview': terms_preview,
+            'twitter_enabled': twitter.get('enabled', False),
+            'twitter_accounts': twitter.get('accounts', []),
+            'has_api_key': bool(api_key),
+            'key_prefix': api_key[:10] + '...' if api_key else 'EMPTY',
+            'schedule_on': schedule.get('enabled', False),
+            'refresh_min': schedule.get('refresh_interval', 'N/A'),
+            'db_path': db_path,
+            'db_exists': os.path.exists(db_path),
+            'articles': total_articles,
+            'tweets': twitter_articles,
+            'runs': run_info,
+            'env_key': bool(os.environ.get('ANTHROPIC_API_KEY')),
+            'data_dir': os.environ.get('DATA_DIR', 'not set'),
+        }
+        return jsonify(info)
+    except Exception as e:
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()[-500:]}), 500
