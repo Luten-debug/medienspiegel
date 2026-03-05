@@ -60,7 +60,7 @@
         <span class="tweet-lang-badge">{{ article.language | upper }}</span>
         {% endif %}
         <span class="tweet-date-sm">
-            {% if article.published_at %}{{ article.published_at | format_date_short }}{% endif %}
+            {% if article.published_at %}{{ article.published_at | format_datetime_short }}{% endif %}
         </span>
     </div>
 </div>
@@ -86,7 +86,7 @@
             <span class="topic-badge">{{ article.topic_cluster }}</span>
             {% endif %}
             <span class="article-date">
-                {% if article.published_at %}{{ article.published_at | format_date_short }}{% endif %}
+                {% if article.published_at %}{{ article.published_at | format_datetime_short }}{% endif %}
             </span>
         </div>
     </div>
