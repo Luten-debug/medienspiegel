@@ -169,6 +169,19 @@ _summary_count = [0]
 _summary_progress = {'done': 0, 'total': 0}
 
 
+@api_bp.route('/reset-summaries', methods=['POST'])
+def reset_summaries():
+    """Setze alle KI-Zusammenfassungen zurueck (damit neue Zitate generiert werden)."""
+    db_path = current_app.config['DB_PATH']
+    from ..database import get_db
+    conn = get_db(db_path)
+    result = conn.execute("UPDATE articles SET ai_summary = NULL")
+    count = result.rowcount
+    conn.commit()
+    conn.close()
+    return '<div class="notice success">{} Zusammenfassungen zurückgesetzt. Klicke jetzt "KI Zusammenfassen" für neue Zitate.</div>'.format(count)
+
+
 @api_bp.route('/summarize', methods=['POST'])
 def summarize():
     """Generiere KI-Zusammenfassungen fuer alle Artikel ohne Summary."""
