@@ -1,4 +1,4 @@
-"""APScheduler fuer automatische Mediensammlung (taeglich + alle 15 Min)."""
+"""APScheduler fuer automatische Mediensammlung."""
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -35,20 +35,25 @@ def init_scheduler(app):
             try:
                 from .collectors import run_collection
                 db_path = app.config['DB_PATH']
+                # run_collection hat internen Lock — gibt (None, 0, 0, [...]) zurueck
+                # wenn bereits eine Sammlung laeuft
                 run_id, found, new, errors = run_collection(config, db_path)
+
+                if run_id is None:
+                    print("  [SCHEDULER] Sammlung uebersprungen (laeuft bereits)")
+                    return
+
                 print("  [SCHEDULER] Sammlung abgeschlossen: {} gefunden, {} neu".format(found, new))
 
-                # KI-Zusammenfassungen (nur bei taeglich, nicht bei 15-Min Refresh)
+                # KI-Zusammenfassungen (nur bei taeglich)
                 api_key = config.get('api_keys', {}).get('anthropic', '')
                 if api_key and new > 0:
-                    # Auto-Kategorisierung (schnell)
                     try:
                         from .summarizer import categorize_uncategorized
                         categorize_uncategorized(db_path, api_key)
                     except Exception as e:
                         print("  [SCHEDULER] Kategorisierung: {}".format(str(e)[:80]))
 
-                    # Zusammenfassungen
                     try:
                         from .summarizer import summarize_new_articles
                         count = summarize_new_articles(db_path, api_key)
@@ -117,21 +122,25 @@ def init_scheduler(app):
     )
     print("  [SCHEDULER] Taegliche Sammlung geplant fuer {:02d}:{:02d}".format(hour, minute))
 
-    # === 2) Auto-Refresh alle 15 Minuten (NUR Collection, KEINE KI = keine Credits) ===
+    # === 2) Auto-Refresh ===
     refresh_minutes = schedule_config.get('refresh_interval', 15)
     if refresh_minutes and refresh_minutes > 0:
 
         def auto_refresh():
-            """Schnelle Artikelsammlung ohne KI (kostenlos)."""
+            """Schnelle Artikelsammlung mit KI-Kategorisierung."""
             with app.app_context():
                 try:
                     from .collectors import run_collection
                     db_path = app.config['DB_PATH']
                     run_id, found, new, errors = run_collection(config, db_path)
+
+                    if run_id is None:
+                        return  # Laeuft schon
+
                     if new > 0:
                         print("  [AUTO-REFRESH] {} neue Artikel gesammelt".format(new))
 
-                        # Kategorisierung + Zitate (Haiku = guenstig)
+                        # Kategorisierung + Zitate
                         api_key = config.get('api_keys', {}).get('anthropic', '')
                         if api_key:
                             try:
@@ -178,8 +187,7 @@ def init_scheduler(app):
             name='Auto-Refresh (alle {} Min)'.format(refresh_minutes),
             replace_existing=True
         )
-        print("  [SCHEDULER] Auto-Refresh alle {} Minuten aktiviert (nur Sammlung, keine KI-Credits)".format(
-            refresh_minutes))
+        print("  [SCHEDULER] Auto-Refresh alle {} Minuten aktiviert".format(refresh_minutes))
 
     _scheduler.start()
 
