@@ -1,0 +1,113 @@
+{% if article.source_type == 'twitter' %}
+{# === X/TWITTER POST === #}
+{% set has_profile = '|' in (article.source_name or '') %}
+{% set handle = article.source_name | tweet_handle %}
+{% set tid = article.url | tweet_id %}
+{% if has_profile %}
+    {% set parts = article.source_name.split('|') %}
+    {% set display_name = parts[1] if parts|length > 1 else handle %}
+    {% set avatar_url = parts[2] if parts|length > 2 else '' %}
+{% else %}
+    {% set display_name = 'X/Twitter' %}
+    {% set avatar_url = '' %}
+{% endif %}
+<div class="tweet-card">
+    {% if tid %}
+    {# Echter Tweet-Embed via Twitter Widget #}
+    <div class="tweet-embed-wrap" id="embed-{{ article.id }}"
+         data-tweet-id="{{ tid }}" data-handle="{{ handle.lstrip('@') }}">
+        <div class="tweet-embed-content">
+            {# Schöner Platzhalter während Embed lädt #}
+            <div class="tweet-loading">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#71767b"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                <span>Post wird geladen...</span>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    {# Fallback: Stylischer dunkler X-Post #}
+    <div class="tweet-dark-card">
+        <div class="tweet-dark-header">
+            {% if avatar_url %}
+            <img class="tweet-avatar" src="{{ avatar_url }}" alt="" loading="lazy"
+                 onerror="this.style.display='none'">
+            {% else %}
+            <div class="tweet-avatar-placeholder">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#e7e9ea"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </div>
+            {% endif %}
+            <div class="tweet-author-info">
+                <span class="tweet-display-name">{{ display_name }}</span>
+                {% if handle %}<span class="tweet-handle">{{ handle }}</span>{% endif %}
+            </div>
+            <svg class="tweet-x-logo" width="18" height="18" viewBox="0 0 24 24" fill="#71767b"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </div>
+        <p class="tweet-dark-text">{{ article.title }}</p>
+        {% if article.published_at %}
+        <span class="tweet-dark-time">{{ article.published_at | format_date_short }}</span>
+        {% endif %}
+        <a class="tweet-dark-link" href="{{ article.url }}" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            Auf X ansehen
+        </a>
+    </div>
+    {% endif %}
+    <div class="tweet-card-footer">
+        {% if article.topic_cluster %}
+        <span class="tweet-topic-badge">{{ article.topic_cluster }}</span>
+        {% endif %}
+        {% if article.language %}
+        <span class="tweet-lang-badge">{{ article.language | upper }}</span>
+        {% endif %}
+        <span class="tweet-date-sm">
+            {% if article.published_at %}{{ article.published_at | format_date_short }}{% endif %}
+        </span>
+    </div>
+</div>
+{% else %}
+{# === ARTICLE CARD === #}
+{# _wc wird im Parent-Loop (article_list.html) gesetzt #}
+{% set title_len = article.title | length %}
+{% set card_class = 'card-w8' if title_len > 140 else (_wc | default('')) %}
+<div class="article-card {{ card_class }}">
+    <div class="article-top">
+        <div class="source-info">
+            <img class="source-favicon"
+                 src="https://www.google.com/s2/favicons?sz=32&domain={{ article.source_name | domain_from_name }}"
+                 alt="" loading="lazy"
+                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><rect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%23667%22/><text x=%2216%22 y=%2222%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2218%22>{{ (article.source_name or "?")[:1] }}</text></svg>'">
+            <span class="source-name">{{ article.source_name or article.source_type }}</span>
+            {% if article.language %}
+            <span class="lang-badge">{{ article.language | upper }}</span>
+            {% endif %}
+        </div>
+        <div class="article-meta-right">
+            {% if article.topic_cluster %}
+            <span class="topic-badge">{{ article.topic_cluster }}</span>
+            {% endif %}
+            <span class="article-date">
+                {% if article.published_at %}{{ article.published_at | format_date_short }}{% endif %}
+            </span>
+        </div>
+    </div>
+    <h3 class="article-title">
+        <a href="{{ article.url }}" target="_blank" rel="noopener">{{ article.title }}</a>
+    </h3>
+    {% if article.ai_summary %}
+    <div class="ai-summary" id="summary-{{ article.id }}">
+        <span class="summary-text">{{ article.ai_summary }}</span>
+        <span class="summary-toggle" onclick="toggleSummary(this)">mehr</span>
+    </div>
+    {% else %}
+    <div id="summary-{{ article.id }}">
+        {% if article.snippet and article.snippet[:40] != article.title[:40] %}
+        <p class="snippet">{{ article.snippet[:200] }}{% if article.snippet|length > 200 %}...{% endif %}</p>
+        {% endif %}
+        <button class="btn-summarize"
+                hx-post="/api/articles/{{ article.id }}/summarize"
+                hx-target="#summary-{{ article.id }}"
+                hx-swap="innerHTML">Zusammenfassen</button>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
