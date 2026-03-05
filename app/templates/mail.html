@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+        .container { max-width: 700px; margin: 0 auto; background: #fff; }
+        .header { background: #1a1a2e; color: #fff; padding: 24px; text-align: center; }
+        .header h1 { margin: 0; font-size: 22px; }
+        .header .meta { color: #a0a0c0; margin-top: 8px; font-size: 14px; }
+        .stats { display: flex; justify-content: center; gap: 32px; padding: 16px; background: #f0f0f5; }
+        .stat { text-align: center; }
+        .stat .num { font-size: 24px; font-weight: bold; color: #1a1a2e; }
+        .stat .label { font-size: 12px; color: #666; }
+        .article { padding: 16px 24px; border-bottom: 1px solid #eee; }
+        .article:last-child { border-bottom: none; }
+        .article h3 { margin: 0 0 4px 0; font-size: 15px; }
+        .article h3 a { color: #1a1a2e; text-decoration: none; }
+        .article .source { font-size: 12px; color: #888; margin-bottom: 8px; }
+        .article .source .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+        .badge-reach { background: #e8e0f0; color: #5b21b6; }
+        .article .summary { font-size: 13px; color: #333; line-height: 1.5; padding: 8px 12px; background: #f8f8ff; border-left: 3px solid #1a73e8; border-radius: 4px; }
+        .footer { padding: 16px 24px; text-align: center; font-size: 12px; color: #999; background: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Medienspiegel Giga Factory</h1>
+            <div class="meta">{{ date_str }}</div>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="num">{{ stats.total }}</div>
+                <div class="label">Artikel</div>
+            </div>
+            <div class="stat">
+                <div class="num">{{ stats.relevant }}</div>
+                <div class="label">Relevant</div>
+            </div>
+            <div class="stat">
+                <div class="num">{{ stats.by_source | length }}</div>
+                <div class="label">Quellen</div>
+            </div>
+        </div>
+
+        {% for article in articles %}
+        <div class="article">
+            <h3><a href="{{ article.url }}">{{ article.title }}</a></h3>
+            <div class="source">
+                {{ article.source_name or article.source_type }}
+                {% if article.estimated_reach %}
+                &middot; <span class="badge badge-reach">{{ article.estimated_reach }}</span>
+                {% endif %}
+                {% if article.published_at %}
+                &middot; {{ article.published_at[:16] }}
+                {% endif %}
+            </div>
+            {% if article.ai_summary %}
+            <div class="summary"><strong>KI:</strong> {{ article.ai_summary }}</div>
+            {% elif article.snippet %}
+            <div class="summary">{{ article.snippet[:300] }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <div class="footer">
+            Automatisch generiert vom Medienspiegel
+        </div>
+    </div>
+</body>
+</html>
