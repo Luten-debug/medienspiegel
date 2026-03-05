@@ -7,6 +7,43 @@ document.addEventListener('click', function(e) {
     });
 });
 
+// === Scroll-Animation (IntersectionObserver) ===
+var _scrollObserver = null;
+
+function initScrollAnimations() {
+    // Observer fuer Karten die beim Scrollen einfliegen
+    if (_scrollObserver) _scrollObserver.disconnect();
+
+    _scrollObserver = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('scroll-visible');
+                _scrollObserver.unobserve(entry.target);
+            }
+        });
+    }, {
+        threshold: 0.08,
+        rootMargin: '0px 0px -40px 0px'
+    });
+
+    // Alle Karten beobachten die noch nicht sichtbar sind
+    document.querySelectorAll('.article-card, .tweet-card').forEach(function(card) {
+        if (card.dataset.scrollInit) return;
+        card.dataset.scrollInit = '1';
+
+        // Karten die schon im Viewport sind sofort zeigen
+        var rect = card.getBoundingClientRect();
+        if (rect.top < window.innerHeight + 50) {
+            card.classList.add('scroll-visible');
+        } else {
+            // Karten ausserhalb des Viewports fuer Animation vorbereiten
+            card.classList.add('scroll-animate');
+            _scrollObserver.observe(card);
+        }
+    });
+}
+
+
 // Themen-Gruppierung an/aus
 function toggleGrouping() {
     var btn = document.getElementById('toggle-grouping');
@@ -57,6 +94,17 @@ function initSummaryToggles() {
             toggleEl.style.display = 'none';
         }
     });
+}
+
+// Alert-Panel auf-/zuklappen
+function toggleAlertPanel() {
+    var panel = document.getElementById('alerts-panel');
+    var section = panel.closest('.alerts-section');
+    if (section.classList.contains('open')) {
+        section.classList.remove('open');
+    } else {
+        section.classList.add('open');
+    }
 }
 
 // Twitter widgets.js laden (einmalig)
@@ -118,9 +166,11 @@ document.body.addEventListener('htmx:afterSwap', function() {
     });
     initSummaryToggles();
     initTweetEmbeds();
+    initScrollAnimations();
 });
 
 document.addEventListener('DOMContentLoaded', function() {
     initSummaryToggles();
     initTweetEmbeds();
+    initScrollAnimations();
 });
