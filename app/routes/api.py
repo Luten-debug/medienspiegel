@@ -68,6 +68,13 @@ def collect():
                 # Auto-Kategorisierung + Zitate generieren
                 api_key = config.get('api_keys', {}).get('anthropic', '')
                 if api_key and new > 0:
+                    # Erst kaputte Meta-Kommentar-Zitate bereinigen
+                    try:
+                        from ..summarizer import cleanup_meta_summaries
+                        cleanup_meta_summaries(db_path)
+                    except Exception as e:
+                        print("  [WARN] Meta-Cleanup: {}".format(str(e)[:80]))
+
                     _collection_progress['current_term'] = 'Kategorisierung...'
                     try:
                         from ..summarizer import categorize_uncategorized
@@ -187,7 +194,29 @@ def reset_summaries():
     count = result.rowcount
     conn.commit()
     conn.close()
-    return '<div class="notice success">{} Zusammenfassungen zurückgesetzt. Klicke jetzt "KI Zusammenfassen" für neue Zitate.</div>'.format(count)
+    return '<div class="notice success">{} Zusammenfassungen zurückgesetzt. Klicke jetzt "Jetzt sammeln" für neue Zitate.</div>'.format(count)
+
+
+@api_bp.route('/cleanup-meta', methods=['POST'])
+def cleanup_meta():
+    """Bereinige kaputte Meta-Kommentar-Zitate und generiere sie neu."""
+    db_path = current_app.config['DB_PATH']
+    config = current_app.config['MEDIENSPIEGEL']
+    api_key = config.get('api_keys', {}).get('anthropic', '')
+
+    from ..summarizer import cleanup_meta_summaries
+    cleaned = cleanup_meta_summaries(db_path)
+
+    if cleaned > 0 and api_key:
+        # Sofort neue Zitate generieren
+        try:
+            from ..summarizer import summarize_new_articles
+            summarize_new_articles(db_path, api_key)
+        except Exception as e:
+            return '<div class="notice success">{} kaputte Zitate bereinigt, aber Neugenerierung fehlgeschlagen: {}</div>'.format(cleaned, str(e)[:80])
+        return '<div class="notice success">{} kaputte Zitate bereinigt und neu generiert!<script>setTimeout(function(){{ window.location.reload(); }}, 1500);</script></div>'.format(cleaned)
+
+    return '<div class="notice success">Keine kaputten Zitate gefunden.</div>'
 
 
 @api_bp.route('/summarize', methods=['POST'])
