@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block collection_status %}
+{% if last_run %}
+<div class="status-bar">
+    <span class="status-dot {% if last_run.status == 'completed' %}green{% elif last_run.status == 'running' %}orange{% else %}red{% endif %}"></span>
+    Letzte Sammlung: <strong>{{ last_run.finished_at | format_datetime }}</strong>
+    &middot; {{ last_run.articles_new }} neue Artikel
+</div>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if news_overview %}
+<div class="news-overview">
+    <div class="news-overview-header">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.663 17h4.674M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+        <strong>Überblick</strong>
+    </div>
+    <p>{{ news_overview }}</p>
+</div>
+{% endif %}
+
+<div class="stats-grid stats-2">
+    <div class="stat-card">
+        <div class="stat-number accent">{{ stats_24h.total }}</div>
+        <div class="stat-label">Nennungen (24h)
+            {% if trend_mentions > 0 %}
+            <span class="trend-up">&#9650; +{{ trend_mentions }}</span>
+            {% elif trend_mentions < 0 %}
+            <span class="trend-down">&#9660; {{ trend_mentions }}</span>
+            {% else %}
+            <span class="trend-neutral">&#8212; 0</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ stats_24h.unique_sources }}</div>
+        <div class="stat-label">Quellen (24h)
+            {% if trend_sources > 0 %}
+            <span class="trend-up">&#9650; +{{ trend_sources }}</span>
+            {% elif trend_sources < 0 %}
+            <span class="trend-down">&#9660; {{ trend_sources }}</span>
+            {% else %}
+            <span class="trend-neutral">&#8212; 0</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="filter-bar">
+    <form hx-get="/api/articles"
+          hx-target="#article-list"
+          hx-trigger="change, keyup changed delay:300ms from:#search-input"
+          hx-swap="innerHTML">
+        <div class="filter-row">
+            <select name="range" class="filter-select">
+                {% for value, label in time_ranges %}
+                <option value="{{ value }}" {% if time_range == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            <select name="source" class="filter-select">
+                <option value="" {% if not filter_source %}selected{% endif %}>Alle Quellen</option>
+                <option value="google_news" {% if filter_source == 'google_news' %}selected{% endif %}>Nachrichten</option>
+                <option value="twitter" {% if filter_source == 'twitter' %}selected{% endif %}>X/Twitter</option>
+            </select>
+            {% if stats.topics %}
+            <select name="topic" class="filter-select">
+                <option value="" {% if not filter_topic %}selected{% endif %}>Alle Themen</option>
+                {% for topic_name, count in stats.topics.items() %}
+                <option value="{{ topic_name }}" {% if filter_topic == topic_name %}selected{% endif %}>{{ topic_name }} ({{ count }})</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+            <div class="search-wrapper">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="search" name="search" id="search-input"
+                       placeholder="Artikel durchsuchen..."
+                       value="{{ filter_search }}">
+            </div>
+            <button type="button" class="toggle-group-btn active" id="toggle-grouping"
+                    onclick="toggleGrouping()" title="Nach Themen gruppieren">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+                Gruppiert
+            </button>
+        </div>
+    </form>
+</div>
+
+<div id="article-list">
+    {% include "partials/article_list.html" %}
+</div>
+{% endblock %}
