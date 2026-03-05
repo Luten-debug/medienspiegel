@@ -214,12 +214,14 @@ def _summarize_article(article, api_key, model="claude-haiku-4-5-20251001"):
     prompt = """{lang_hint}"{title}" ({source})
 {snippet}
 
+Aufgabe: Extrahiere das wichtigste ZITAT oder die praegnanteste Aussage aus dem Artikeltext.
+
 Regeln:
-- AGENTURMELDUNG (dpa/Reuters/AFP): Wenn der Text offensichtlich eine Agenturmeldung wiedergibt oder mehrere Medien identischen Inhalt bringen, schreibe NUR: "Agenturmeldung (Quelle): " + 1 Kernsatz. Kurz halten!
-- EIGENER ARTIKEL: 3-4 Saetze, ca. 40-60 Worte. Fasse die wichtigsten Fakten und Zusammenhaenge zusammen.
-- VERBOTEN als Satzanfang: "Bei der", "Der Artikel", "Dies ist", "Es wird", "In der Tesla". Variiere!
-- Schreibe sachlich und direkt. Nenne konkrete Zahlen, Namen, Fakten wenn vorhanden.
-- Wenn kaum Inhalt vorhanden: formuliere den Titel als kurzen beschreibenden Satz um.{topic_hint}
+- Suche die interessanteste, aussagekraeftigste Stelle im Text — eine direkte Aussage, ein Fakt, eine Meinung.
+- Gib das Zitat woertlich wieder, so wie es im Text steht (in Anfuehrungszeichen).
+- Falls kein woertliches Zitat vorhanden: formuliere die Kernaussage als kurzen, praegnanten Satz (1-2 Saetze, max 40 Worte).
+- Bevorzuge konkrete Zahlen, Fakten, Aussagen von Personen.
+- KEIN "Der Artikel berichtet..." oder aehnliche Meta-Formulierungen. Nur das Zitat/die Aussage selbst.{topic_hint}
 
 JSON: {{"zusammenfassung":"...","reichweite":"Ueberregional|Regional|Fachpresse","thema":"..."}}""".format(
         lang_hint="Auf Deutsch. " if lang != 'de' else "",
