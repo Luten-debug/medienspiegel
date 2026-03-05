@@ -1,0 +1,109 @@
+# Medienspiegel Konfiguration - Giga Factory Berlin-Brandenburg
+# Mehrsprachige Medienbeobachtung (DE, EN, PL)
+
+languages:
+  # === DEUTSCH ===
+  - lang: de
+    country: DE
+    search_terms:
+      # Kernbegriffe Gigafactory
+      - '"Gigafactory" Grünheide'
+      - '"Gigafactory Berlin"'
+      - '"Gigafactory Brandenburg"'
+      - '"Giga Berlin"'
+      - '"Giga Factory" Grünheide'
+      - '"Gigafactory Gruenheide"'
+      # Tesla Standort
+      - '"Tesla Grünheide"'
+      - '"Tesla" Grünheide'
+      - '"Tesla Werk" Brandenburg'
+      - 'Tesla Fabrik Grünheide'
+      - 'Tesla Werk Gruenheide'
+      # Arbeitnehmer & Gewerkschaft
+      - 'IG Metall Tesla Grünheide'
+      - 'Tesla Betriebsrat Grünheide'
+      - 'Tesla Gewerkschaft Brandenburg'
+      - 'Tesla Brandenburg Streik'
+      # Umwelt & Genehmigungen
+      - 'Tesla Grünheide Wasser'
+      - 'Tesla Grünheide Umwelt'
+      - 'Tesla Grünheide Erweiterung'
+      - 'Tesla Grünheide Protest'
+      # Produktion & Wirtschaft
+      - 'Tesla Produktion Grünheide'
+      - '"Tesla Brandenburg" Produktion'
+      - 'Tesla Grünheide Stellenabbau'
+      - 'Tesla Grünheide Jobs'
+      - 'Tesla Batterie Grünheide'
+      # Personen & Politik
+      - 'Elon Musk Grünheide'
+      - 'Tesla Grünheide Gemeinde'
+
+  # === ENGLISCH ===
+  - lang: en
+    country: GB
+    search_terms:
+      - '"Giga Berlin"'
+      - '"Gigafactory Berlin"'
+      - '"Tesla Gruenheide"'
+      - '"Tesla Grünheide"'
+      - 'Tesla Berlin factory'
+      - 'Tesla Brandenburg factory'
+      - 'Tesla Germany Gigafactory'
+      - 'Giga Berlin expansion'
+      - 'Giga Berlin production'
+      - 'Elon Musk Giga Berlin'
+      - 'Tesla Berlin workers union'
+
+  # === POLNISCH ===
+  - lang: pl
+    country: PL
+    search_terms:
+      - 'Tesla Grünheide'
+      - '"Gigafactory Berlin"'
+      - '"Giga Berlin"'
+      - 'fabryka Tesla Grünheide'
+      - 'Tesla fabryka Brandenburg'
+      - 'Tesla Niemcy fabryka'
+      - 'Gigafabryka Berlin'
+      - 'Tesla Berlin produkcja'
+
+# API Keys
+api_keys:
+  anthropic: ""
+  newsapi: ""
+
+# Gmail Einstellungen
+mail:
+  enabled: false
+  sender: ""
+  password: ""
+  recipients:
+    - ""
+  subject_prefix: "Medienspiegel Giga Factory"
+
+# Automatischer Zeitplan
+schedule:
+  enabled: true
+  time: "08:00"
+  refresh_interval: 15  # Auto-Refresh alle 15 Min (nur Sammlung, keine KI-Credits)
+
+# Zusaetzliche RSS-Feeds
+rss_feeds: []
+
+# Twitter/X Einstellungen
+twitter:
+  enabled: true
+  max_tweets: 30
+  accounts:
+    - Gf4Tesla          # Gigafactory Berlin News
+    - alex_avoigt       # Alex Voigt - Tesla/EV Analyst
+    - Teslaconomics     # Teslaconomics
+    - SawyerMerritt     # Sawyer Merritt - Tesla News
+    - TeslaEurope       # Tesla Europe
+    - Tesla             # Tesla offiziell
+
+# Sammel-Einstellungen
+collection:
+  max_articles_per_source: 30
+  request_delay: 1.0
