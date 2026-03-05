@@ -64,7 +64,7 @@ def index():
     db_path = current_app.config['DB_PATH']
 
     # Filter
-    time_range = request.args.get('range', '3d')
+    time_range = request.args.get('range', '7d')
     search = request.args.get('search', '')
     source = request.args.get('source', '')
     topic = request.args.get('topic', '')
