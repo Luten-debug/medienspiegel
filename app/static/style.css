@@ -1,0 +1,800 @@
+/* Medienspiegel - Tesla.com inspired Design */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+    --bg: #ffffff;
+    --bg-secondary: #f4f4f4;
+    --card: #ffffff;
+    --text: #171a20;
+    --text-secondary: #5c5e62;
+    --text-muted: #878b90;
+    --border: #e5e5e5;
+    --accent: #e82127;
+    --accent-light: #fef2f2;
+    --blue: #3e6ae1;
+    --blue-light: #eef3ff;
+    --green: #12805c;
+    --green-light: #e6f9f0;
+    --red: #e82127;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Header - Clean Tesla style */
+header {
+    background: var(--bg);
+    color: var(--text);
+    padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid var(--border);
+}
+.header-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 52px;
+}
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.logo-icon {
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+.logo-icon svg { width: 16px; height: 16px; }
+.logo h1 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+}
+.logo .subtitle {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    letter-spacing: 0.01em;
+}
+.header-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Buttons - Tesla rounded pill style */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 18px;
+    border-radius: 100px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    font-family: inherit;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+.btn svg { flex-shrink: 0; width: 14px; height: 14px; }
+.btn-primary {
+    background: var(--text);
+    color: white;
+}
+.btn-primary:hover { background: #393c41; }
+.btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+}
+.btn-secondary:hover {
+    background: var(--bg-secondary);
+    border-color: #ccc;
+}
+
+/* Main */
+main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem 2rem;
+}
+
+/* Status Bar */
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    margin-bottom: 1.25rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.status-dot.green { background: var(--green); }
+.status-dot.orange { background: #f59e0b; }
+.status-dot.red { background: var(--red); }
+
+/* Notices */
+.notice {
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.notice.running {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    flex-direction: column;
+    align-items: stretch;
+}
+.notice.success {
+    background: var(--green-light);
+    color: var(--green);
+}
+
+/* Progress Bar */
+.progress-bar {
+    width: 100%;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 6px;
+}
+.progress-fill {
+    height: 100%;
+    background: var(--text);
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.stat-card {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    text-align: center;
+}
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 6px;
+    letter-spacing: -0.04em;
+}
+.stat-number.accent { color: var(--text); }
+.stat-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.trend-up {
+    color: var(--green);
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-left: 4px;
+}
+.trend-down {
+    color: var(--red);
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-left: 4px;
+}
+.trend-neutral {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    margin-left: 4px;
+}
+
+/* News Overview */
+.news-overview {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.news-overview-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    color: var(--text);
+    font-size: 0.85rem;
+}
+.news-overview-header svg { color: var(--accent); }
+.news-overview p {
+    font-size: 0.88rem;
+    line-height: 1.65;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Filter Bar */
+.filter-bar {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 12px 0;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+.filter-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.filter-select {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-size: 0.8rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+    max-width: 220px;
+    text-overflow: ellipsis;
+}
+.filter-select:focus { border-color: var(--text); }
+.search-wrapper {
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+}
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+.search-wrapper input {
+    width: 100%;
+    padding: 6px 12px 6px 34px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-size: 0.8rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.search-wrapper input:focus { border-color: var(--text); }
+
+/* Topic Groups */
+.topic-group {
+    margin-bottom: 2rem;
+}
+.topic-group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--text);
+}
+.topic-group-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin: 0;
+}
+.topic-group-count {
+    font-size: 0.68rem;
+    font-weight: 700;
+    background: var(--text);
+    color: white;
+    padding: 1px 8px;
+    border-radius: 100px;
+    min-width: 20px;
+    text-align: center;
+}
+
+/* Article List — Mehrspalten-Layout */
+.article-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+/* Regular Article Card — abwechselnd breite Kacheln */
+.article-card {
+    background: var(--bg);
+    border-radius: var(--radius-lg);
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    transition: border-color 0.2s;
+    /* Fallback */
+    flex: 1 1 calc(50% - 8px);
+    min-width: 260px;
+    max-width: 100%;
+}
+/* Abwechselnde Breiten-Paare fuer visuellen Rhythmus
+   Muster: schmal+breit, breit+schmal, 3er-Reihe, volle Breite */
+.article-card.card-w1 { flex: 1 1 calc(35% - 8px); }   /* schmal */
+.article-card.card-w2 { flex: 1 1 calc(65% - 8px); }   /* breit  → Paar 1 */
+.article-card.card-w3 { flex: 1 1 calc(58% - 8px); }   /* breit */
+.article-card.card-w4 { flex: 1 1 calc(42% - 8px); }   /* schmal → Paar 2 */
+.article-card.card-w5 { flex: 1 1 calc(30% - 8px); min-width: 220px; }   /* eng */
+.article-card.card-w6 { flex: 1 1 calc(36% - 8px); }   /* eng */
+.article-card.card-w7 { flex: 1 1 calc(34% - 8px); }   /* eng → 3er Reihe */
+.article-card.card-w8 { flex: 1 1 100%; }               /* volle Breite */
+.article-card:hover {
+    border-color: #ccc;
+}
+.article-card.relevant {
+    border-left: 3px solid var(--green);
+}
+.article-card.irrelevant {
+    opacity: 0.45;
+}
+
+/* Article Top */
+.article-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    gap: 8px;
+}
+.source-info {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+.source-favicon {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+.source-name {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+.article-meta-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.article-date {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* Badges */
+.source-type-badge {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    vertical-align: middle;
+}
+.source-type-badge.twitter {
+    background: var(--text);
+    color: white;
+}
+.lang-badge {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+}
+.topic-badge {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+}
+.reach-badge {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: var(--blue-light);
+    color: var(--blue);
+}
+
+/* Article Title */
+.article-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 6px;
+    letter-spacing: -0.015em;
+}
+.article-title a {
+    color: var(--text);
+    text-decoration: none;
+}
+.article-title a:hover {
+    text-decoration: underline;
+}
+
+/* Snippet */
+.snippet {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    margin-bottom: 8px;
+}
+
+/* Summarize Button */
+.btn-summarize {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 14px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+    margin-top: 4px;
+}
+.btn-summarize:hover {
+    background: var(--text);
+    color: white;
+    border-color: var(--text);
+}
+
+/* AI Summary */
+.ai-summary {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: var(--text-secondary);
+}
+.ai-summary .summary-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.ai-summary.expanded .summary-text {
+    -webkit-line-clamp: unset;
+    overflow: visible;
+}
+.summary-toggle {
+    display: inline-block;
+    font-size: 0.72rem;
+    color: var(--blue);
+    cursor: pointer;
+    font-weight: 600;
+    margin-top: 3px;
+}
+.summary-toggle:hover {
+    text-decoration: underline;
+}
+
+/* === X/Twitter Post Card === */
+.tweet-card {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 10px 0;
+    /* Tweets immer volle Breite */
+    flex: 1 1 100%;
+}
+.tweet-embed-wrap {
+    margin: 0;
+}
+.tweet-embed-content {
+    margin: 0;
+}
+.tweet-embed-content .twitter-tweet {
+    margin: 0 !important;
+}
+/* Loading-Platzhalter fuer Embed */
+.tweet-loading {
+    display: flex; align-items: center; gap: 8px;
+    padding: 20px; color: #71767b; font-size: 0.82rem;
+    background: #15202b; border-radius: 12px;
+}
+/* === Dunkle X-Post Karte (Twitter Dark Mode Style) === */
+.tweet-dark-card {
+    background: #15202b;
+    border-radius: 16px;
+    padding: 16px 20px;
+    border: 1px solid #2f3336;
+    color: #e7e9ea;
+}
+.tweet-dark-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.tweet-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.tweet-avatar-placeholder {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: #1d2d3d;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.tweet-author-info {
+    display: flex; flex-direction: column;
+    min-width: 0; flex: 1;
+}
+.tweet-display-name {
+    font-weight: 700; font-size: 0.88rem;
+    color: #e7e9ea; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+}
+.tweet-handle {
+    font-size: 0.78rem; color: #71767b;
+}
+.tweet-x-logo { margin-left: auto; flex-shrink: 0; }
+.tweet-dark-text {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #e7e9ea;
+    margin: 0 0 12px;
+    word-break: break-word;
+}
+.tweet-dark-time {
+    font-size: 0.75rem;
+    color: #71767b;
+    display: block;
+    margin-bottom: 12px;
+}
+.tweet-dark-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: #1d9bf0; font-size: 0.82rem;
+    text-decoration: none; font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 100px;
+    border: 1px solid #2f3336;
+    transition: background 0.2s;
+}
+.tweet-dark-link:hover {
+    background: rgba(29,155,240,0.1);
+}
+/* Legacy fallback (entfernen sobald nicht mehr noetig) */
+.tweet-text-fallback { display: none; }
+/* Footer unter dem Embed: Kategorie + Datum */
+.tweet-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px 0;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+.tweet-topic-badge {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+.tweet-lang-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: #2c3640;
+    color: #8899a6;
+}
+.tweet-date-sm {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    margin-left: auto;
+}
+.tweet-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    color: #1d9bf0;
+    text-decoration: none;
+    font-weight: 500;
+}
+.tweet-link:hover { text-decoration: underline; }
+
+/* Grouping Toggle */
+.toggle-group-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-size: 0.8rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+.toggle-group-btn:hover { border-color: var(--text); }
+.toggle-group-btn.active {
+    background: var(--text);
+    color: white;
+    border-color: var(--text);
+}
+
+/* Summary toggle states are handled by .summary-text line-clamp + .summary-toggle */
+
+/* Action Buttons */
+.article-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.article-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+}
+.action-btn {
+    padding: 3px 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+}
+.action-btn:hover { border-color: #999; }
+.action-btn.relevant:hover, .action-btn.relevant.active {
+    background: var(--green-light);
+    border-color: var(--green);
+    color: var(--green);
+}
+.action-btn.irrelevant:hover, .action-btn.irrelevant.active {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+    color: #6b7280;
+}
+
+/* Search Term Tag */
+.search-term-tag {
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 5rem 2rem;
+    color: var(--text-muted);
+}
+.empty-state svg { margin-bottom: 16px; opacity: 0.5; }
+.empty-state h3 {
+    font-size: 1.1rem;
+    color: var(--text);
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+.empty-state p { font-size: 0.88rem; }
+
+/* Footer */
+footer {
+    max-width: 1200px;
+    margin: 3rem auto 2rem;
+    padding: 0 2rem;
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+    header { padding: 0 1rem; }
+    .header-inner {
+        flex-direction: column;
+        height: auto;
+        padding: 10px 0;
+        gap: 8px;
+    }
+    .header-actions {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .btn { padding: 6px 14px; font-size: 0.75rem; }
+    main { padding: 1rem; }
+    .stats-grid { gap: 8px; }
+    .stat-card { padding: 1rem 0.75rem; }
+    .stat-number { font-size: 1.8rem; }
+    .stat-label { font-size: 0.65rem; }
+    .filter-bar { padding: 10px 0; }
+    .filter-row { flex-direction: column; gap: 6px; }
+    .filter-select { width: 100%; }
+    .search-wrapper { min-width: 100%; }
+    .article-card, .article-card[class*="card-w"],
+    .tweet-card { flex: 1 1 100% !important; padding: 14px 16px; }
+    .article-title { font-size: 0.9rem; }
+    .article-top { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .article-date, .tweet-date { font-size: 0.68rem; }
+    .ai-summary { padding: 8px 10px; font-size: 0.8rem; }
+    .article-footer { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .article-actions { margin-left: 0; width: 100%; }
+    .action-btn { flex: 1; text-align: center; }
+    .status-bar { flex-wrap: wrap; font-size: 0.78rem; padding: 8px 10px; }
+    footer { font-size: 0.65rem; margin: 1.5rem auto; }
+    .tweet-card { border-radius: 12px; padding: 12px 14px; }
+}
