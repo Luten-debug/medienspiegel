@@ -53,6 +53,27 @@ def init_db(db_path):
             mail_sent       INTEGER DEFAULT 0,
             errors          TEXT
         );
+        CREATE TABLE IF NOT EXISTS alerts (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            name            TEXT NOT NULL,
+            source_pattern  TEXT,
+            topic_pattern   TEXT,
+            keyword_pattern TEXT,
+            email_to        TEXT,
+            enabled         INTEGER DEFAULT 1,
+            created_at      TEXT NOT NULL,
+            last_triggered  TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS alert_hits (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            alert_id        INTEGER NOT NULL,
+            article_id      INTEGER NOT NULL,
+            triggered_at    TEXT NOT NULL,
+            notified        INTEGER DEFAULT 0,
+            FOREIGN KEY (alert_id) REFERENCES alerts(id),
+            FOREIGN KEY (article_id) REFERENCES articles(id)
+        );
     """)
     # Migrationen: Neue Spalten hinzufuegen
     for migration in [
@@ -332,3 +353,132 @@ def get_article_stats(db_path, date=None, since=None, until=None):
 
     conn.close()
     return stats
+
+
+# === Alert-Funktionen ===
+
+def get_alerts(db_path, only_enabled=False):
+    """Hole alle Alerts."""
+    conn = get_db(db_path)
+    query = "SELECT * FROM alerts"
+    if only_enabled:
+        query += " WHERE enabled = 1"
+    query += " ORDER BY created_at DESC"
+    rows = conn.execute(query).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def create_alert(db_path, name, source_pattern=None, topic_pattern=None,
+                 keyword_pattern=None, email_to=None):
+    """Erstelle einen neuen Alert."""
+    conn = get_db(db_path)
+    cursor = conn.execute(
+        """INSERT INTO alerts (name, source_pattern, topic_pattern,
+           keyword_pattern, email_to, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (name, source_pattern, topic_pattern, keyword_pattern,
+         email_to, datetime.utcnow().isoformat())
+    )
+    alert_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return alert_id
+
+
+def delete_alert(db_path, alert_id):
+    """Loesche einen Alert und seine Treffer."""
+    conn = get_db(db_path)
+    conn.execute("DELETE FROM alert_hits WHERE alert_id = ?", (alert_id,))
+    conn.execute("DELETE FROM alerts WHERE id = ?", (alert_id,))
+    conn.commit()
+    conn.close()
+
+
+def toggle_alert(db_path, alert_id):
+    """Schalte einen Alert an/aus."""
+    conn = get_db(db_path)
+    conn.execute(
+        "UPDATE alerts SET enabled = CASE WHEN enabled = 1 THEN 0 ELSE 1 END WHERE id = ?",
+        (alert_id,))
+    conn.commit()
+    conn.close()
+
+
+def check_alerts(db_path, new_article_ids):
+    """Pruefe ob neue Artikel Alerts ausloesen.
+
+    Returns:
+        list: [(alert_dict, article_dict), ...] fuer alle Treffer
+    """
+    if not new_article_ids:
+        return []
+
+    conn = get_db(db_path)
+    alerts = conn.execute(
+        "SELECT * FROM alerts WHERE enabled = 1"
+    ).fetchall()
+
+    if not alerts:
+        conn.close()
+        return []
+
+    # Hole nur die neuen Artikel
+    placeholders = ','.join('?' * len(new_article_ids))
+    articles = conn.execute(
+        "SELECT * FROM articles WHERE id IN ({})".format(placeholders),
+        new_article_ids
+    ).fetchall()
+
+    hits = []
+    now = datetime.utcnow().isoformat()
+
+    for alert in alerts:
+        alert_d = dict(alert)
+        src_pat = (alert_d.get('source_pattern') or '').lower()
+        topic_pat = (alert_d.get('topic_pattern') or '').lower()
+        kw_pat = (alert_d.get('keyword_pattern') or '').lower()
+
+        for article in articles:
+            art_d = dict(article)
+            matched = False
+
+            # Quellen-Match (case-insensitive Teilstring)
+            if src_pat:
+                src_name = (art_d.get('source_name') or '').lower()
+                if src_pat not in src_name:
+                    continue  # Quelle passt nicht -> skip
+
+            # Themen-Match
+            if topic_pat:
+                topic = (art_d.get('topic_cluster') or '').lower()
+                if topic_pat not in topic:
+                    continue  # Thema passt nicht -> skip
+
+            # Keyword-Match (im Titel oder Snippet)
+            if kw_pat:
+                title = (art_d.get('title') or '').lower()
+                snippet = (art_d.get('snippet') or '').lower()
+                if kw_pat not in title and kw_pat not in snippet:
+                    continue  # Keyword nicht gefunden -> skip
+
+            # Mindestens ein Pattern muss gesetzt sein
+            if src_pat or topic_pat or kw_pat:
+                matched = True
+
+            if matched:
+                # Alert-Treffer speichern
+                try:
+                    conn.execute(
+                        "INSERT INTO alert_hits (alert_id, article_id, triggered_at) VALUES (?, ?, ?)",
+                        (alert_d['id'], art_d['id'], now))
+                    conn.execute(
+                        "UPDATE alerts SET last_triggered = ? WHERE id = ?",
+                        (now, alert_d['id']))
+                    hits.append((alert_d, art_d))
+                except Exception:
+                    pass
+
+    conn.commit()
+    conn.close()
+    return hits
