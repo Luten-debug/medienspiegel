@@ -27,14 +27,17 @@ function initScrollAnimations() {
     });
 
     // Alle Karten beobachten die noch nicht sichtbar sind
+    var staggerDelay = 0;
     document.querySelectorAll('.article-card, .tweet-card').forEach(function(card) {
         if (card.dataset.scrollInit) return;
         card.dataset.scrollInit = '1';
 
-        // Karten die schon im Viewport sind sofort zeigen
+        // Karten die schon im Viewport sind gestaffelt einblenden
         var rect = card.getBoundingClientRect();
         if (rect.top < window.innerHeight + 50) {
+            card.style.animationDelay = staggerDelay + 'ms';
             card.classList.add('scroll-visible');
+            staggerDelay += 60;
         } else {
             // Karten ausserhalb des Viewports fuer Animation vorbereiten
             card.classList.add('scroll-animate');
