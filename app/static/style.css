@@ -40,9 +40,7 @@ body {
 
 /* === Card Scroll Animation === */
 /* Karten starten unsichtbar — scroll JS steuert das Einblenden */
-.article-card, .tweet-card {
-    opacity: 0;
-}
+/* Klasse wird von JS gesetzt, NICHT direkt auf .article-card */
 
 /* Stat-Cards auch animieren */
 .stat-card {
@@ -900,12 +898,16 @@ footer {
 }
 
 /* === Scroll-Animation (stark) === */
-.scroll-animate {
-    opacity: 0;
-    transform: translateY(60px) scale(0.95);
-    filter: blur(4px);
+.scroll-hidden {
+    opacity: 0 !important;
+    transform: translateY(60px) scale(0.95) !important;
+    filter: blur(4px) !important;
+    transition: none !important;
 }
 .scroll-visible {
+    opacity: 1 !important;
+    transform: translateY(0) scale(1) !important;
+    filter: blur(0) !important;
     animation: scrollReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 @keyframes scrollReveal {
