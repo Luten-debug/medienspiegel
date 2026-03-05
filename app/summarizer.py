@@ -300,6 +300,32 @@ def _parse_json_response(text):
     return {}
 
 
+def cleanup_meta_summaries(db_path):
+    """Setze Zusammenfassungen zurueck die Meta-Kommentare enthalten (zur Neugenerierung)."""
+    conn = get_db(db_path)
+    meta_phrases = ['ich kann', 'benoetige', 'benötige', 'artikeltext', 'bereitstellen',
+                    'nicht verfügbar', 'nicht verfuegbar', 'leider nicht', 'sobald du',
+                    'ich kann leider', 'keinen artikeltext', 'kein artikeltext',
+                    'keine informationen', 'nicht genug', 'zusammenfassung:']
+    rows = conn.execute(
+        "SELECT id, ai_summary FROM articles WHERE ai_summary IS NOT NULL"
+    ).fetchall()
+
+    cleaned = 0
+    for row in rows:
+        summary = row['ai_summary'] or ''
+        summary_lower = summary.lower()
+        if any(phrase in summary_lower for phrase in meta_phrases):
+            conn.execute("UPDATE articles SET ai_summary = NULL WHERE id = ?", (row['id'],))
+            cleaned += 1
+
+    if cleaned > 0:
+        conn.commit()
+        print("  [INFO] {} Meta-Kommentar-Zitate bereinigt".format(cleaned))
+    conn.close()
+    return cleaned
+
+
 def fix_broken_summaries(db_path):
     """Repariere Zusammenfassungen die noch rohes JSON oder Markdown enthalten."""
     conn = get_db(db_path)
