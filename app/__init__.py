@@ -125,6 +125,27 @@ def create_app():
         except (ValueError, TypeError):
             return str(value)[:10] if value else ''
 
+    GERMAN_MONTHS_SHORT = [
+        '', 'Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'
+    ]
+
+    @app.template_filter('format_datetime_short')
+    def format_datetime_short_filter(value):
+        """ISO-Datum in kompaktes Format mit Uhrzeit: '5. Mär, 14:30'."""
+        if not value:
+            return ''
+        try:
+            if isinstance(value, str):
+                dt = dateparser.parse(value)
+            else:
+                dt = value
+            dt = _to_german_time(dt)
+            return '{}. {}, {:02d}:{:02d}'.format(
+                dt.day, GERMAN_MONTHS_SHORT[dt.month], dt.hour, dt.minute)
+        except (ValueError, TypeError):
+            return str(value)[:16] if value else ''
+
     @app.template_filter('tweet_handle')
     def tweet_handle_filter(source_name):
         """Extrahiere @handle aus source_name (Format: @handle|Name|avatar)."""
