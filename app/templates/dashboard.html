@@ -4,8 +4,8 @@
 {% if last_run %}
 <div class="status-bar">
     <span class="status-dot {% if last_run.status == 'completed' %}green{% elif last_run.status == 'running' %}orange{% else %}red{% endif %}"></span>
-    Letzte Sammlung: <strong>{{ last_run.finished_at | format_datetime }}</strong>
-    &middot; {{ last_run.articles_new }} neue Artikel
+    Letzte Sammlung: <strong>{{ (last_run.finished_at or last_run.started_at) | format_datetime }}</strong>
+    &middot; {{ last_run.articles_found or 0 }} gefunden, {{ last_run.articles_new or 0 }} neu
 </div>
 {% endif %}
 {% endblock %}
