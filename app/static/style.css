@@ -38,11 +38,14 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* === Card Scroll Animation === */
-/* Karten starten unsichtbar — scroll JS steuert das Einblenden */
-/* Klasse wird von JS gesetzt, NICHT direkt auf .article-card */
+/* === Card Animations === */
+@keyframes cardFadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+/* Scroll-Animation fuer Article/Tweet Cards: per JS (scroll-hidden/scroll-visible) */
 
-/* Stat-Cards auch animieren */
+/* Stat-Cards animieren */
 .stat-card {
     animation: cardFadeIn 0.35s ease-out both;
 }
