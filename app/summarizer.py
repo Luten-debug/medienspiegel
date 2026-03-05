@@ -211,22 +211,19 @@ def _summarize_article(article, api_key, model="claude-haiku-4-5-20251001"):
     """Generiere Zusammenfassung, Reichweite und Themencluster fuer einen Artikel."""
     lang = article.get('language', 'de') or 'de'
 
-    prompt = """{lang_hint}"{title}" ({source})
-{snippet}
+    prompt = """{lang_hint}Artikel: "{title}" ({source})
+Text: {snippet}
 
-Aufgabe: Extrahiere die wichtigsten ZITATE und Kernaussagen aus dem Artikeltext.
+Schreibe 2-3 kurze, praegnante Kernaussagen basierend auf den verfuegbaren Informationen.
 
-Regeln:
-- Suche 2-3 praegnante Stellen: direkte Zitate von Personen, zentrale Fakten, starke Aussagen.
-- Gib Zitate woertlich in Anfuehrungszeichen wieder, mit Quelle/Person falls bekannt.
-- Format: Mehrere Zitate/Aussagen mit Zeilenumbruch getrennt. Beispiel:
-  „Zitat 1" — Person/Quelle
-  Faktische Kernaussage 2.
-  „Zitat 3" — Person
-- Falls wenig Inhalt: ein einzelnes praegnantes Zitat oder die Kernaussage (1-2 Saetze).
-- Bevorzuge konkrete Zahlen, Daten, Namen, Meinungen.
-- KEIN "Der Artikel berichtet..." oder aehnliche Meta-Formulierungen.
-- Maximal 100 Worte insgesamt.{topic_hint}
+WICHTIG:
+- Nutze NUR die oben gegebenen Informationen (Titel + Text). Arbeite mit dem was da ist.
+- NIEMALS schreiben "Ich kann nicht...", "benoetige...", "Der Artikel...", "Es wird berichtet..." oder aehnliche Meta-Saetze.
+- NIEMALS nach mehr Text fragen oder sagen dass Informationen fehlen.
+- Wenn wenig Text vorhanden: formuliere 1-2 Kernaussagen basierend auf dem Titel.
+- Wenn Zitate im Text stehen: gib sie in Anfuehrungszeichen wieder.
+- Trenne mehrere Aussagen mit Zeilenumbruch.
+- Schreibe direkt und faktisch. Max 80 Worte.{topic_hint}
 
 JSON: {{"zusammenfassung":"...","reichweite":"Ueberregional|Regional|Fachpresse","thema":"..."}}""".format(
         lang_hint="Auf Deutsch. " if lang != 'de' else "",
@@ -260,6 +257,14 @@ JSON: {{"zusammenfassung":"...","reichweite":"Ueberregional|Regional|Fachpresse"
     summary = result.get('zusammenfassung', text.strip())
     reach = result.get('reichweite', 'Unbekannt')
     topic = result.get('thema', article.get('topic_cluster') or 'Sonstiges')
+
+    # Schutz: Meta-Kommentare erkennen und durch Fallback ersetzen
+    meta_phrases = ['ich kann', 'benoetige', 'benötige', 'artikeltext', 'bereitstellen',
+                    'nicht verfügbar', 'nicht verfuegbar', 'leider nicht', 'sobald du']
+    summary_lower = summary.lower()
+    if any(phrase in summary_lower for phrase in meta_phrases):
+        # Fallback: Einfache Kernaussage aus dem Titel
+        summary = article.get('title', '')
 
     return summary, reach, topic
 
