@@ -65,7 +65,7 @@ def collect():
                 _collection_progress['found'] = found
                 _collection_progress['new'] = new
 
-                # Auto-Kategorisierung (schnell, ohne Zusammenfassung)
+                # Auto-Kategorisierung + Zitate generieren
                 api_key = config.get('api_keys', {}).get('anthropic', '')
                 if api_key and new > 0:
                     _collection_progress['current_term'] = 'Kategorisierung...'
@@ -74,6 +74,14 @@ def collect():
                         categorize_uncategorized(db_path, api_key)
                     except Exception as e:
                         print("  [WARN] Auto-Kategorisierung: {}".format(str(e)[:80]))
+
+                    # Automatisch Zitate fuer neue Artikel generieren
+                    _collection_progress['current_term'] = 'Zitate generieren...'
+                    try:
+                        from ..summarizer import summarize_new_articles
+                        summarize_new_articles(db_path, api_key)
+                    except Exception as e:
+                        print("  [WARN] Auto-Zitate: {}".format(str(e)[:80]))
 
                 # Alerts pruefen fuer neue Artikel
                 if new > 0:
