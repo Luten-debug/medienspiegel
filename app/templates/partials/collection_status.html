@@ -1,0 +1,27 @@
+{% if status == 'running' %}
+<div class="notice running" role="status"
+     hx-get="/api/collection-status"
+     hx-trigger="every 2s"
+     hx-swap="outerHTML">
+    <div style="width:100%">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span aria-busy="true">{{ message }}</span>
+            {% if current_term %}
+            <span style="font-size:0.75rem;opacity:0.7;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ current_term }}</span>
+            {% endif %}
+        </div>
+        {% if progress is defined and terms_total %}
+        <div class="progress-bar">
+            <div class="progress-fill" style="width:{{ progress }}%"></div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% elif status == 'done' %}
+<div class="notice success" role="status">
+    {{ message }}
+    <script>setTimeout(function(){ window.location.reload(); }, 1500);</script>
+</div>
+{% else %}
+<div class="notice" role="alert">{{ message }}</div>
+{% endif %}
