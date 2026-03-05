@@ -131,12 +131,13 @@ def init_scheduler(app):
                     if new > 0:
                         print("  [AUTO-REFRESH] {} neue Artikel gesammelt".format(new))
 
-                        # Schnelle Kategorisierung (Haiku = guenstig)
+                        # Kategorisierung + Zitate (Haiku = guenstig)
                         api_key = config.get('api_keys', {}).get('anthropic', '')
                         if api_key:
                             try:
-                                from .summarizer import categorize_uncategorized
+                                from .summarizer import categorize_uncategorized, summarize_new_articles
                                 categorize_uncategorized(db_path, api_key)
+                                summarize_new_articles(db_path, api_key)
                             except Exception:
                                 pass
 
