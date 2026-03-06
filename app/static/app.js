@@ -1,4 +1,4 @@
-/* Medienspiegel */
+/* Medienspiegel – Robust UI */
 
 // Dropdown schliessen bei Klick ausserhalb
 document.addEventListener('click', function(e) {
@@ -11,7 +11,6 @@ document.addEventListener('click', function(e) {
 var _scrollObserver = null;
 
 function initScrollAnimations() {
-    // Observer fuer Karten die beim Scrollen einfliegen
     if (_scrollObserver) _scrollObserver.disconnect();
 
     _scrollObserver = new IntersectionObserver(function(entries) {
@@ -24,28 +23,119 @@ function initScrollAnimations() {
         });
     }, {
         threshold: 0.05,
-        rootMargin: '0px 0px -20px 0px'
+        rootMargin: '0px 0px -30px 0px'
     });
 
-    // Alle Karten beobachten die noch nicht sichtbar sind
+    var cards = document.querySelectorAll('.article-card, .tweet-card');
     var staggerDelay = 0;
-    document.querySelectorAll('.article-card, .tweet-card').forEach(function(card) {
+
+    cards.forEach(function(card) {
         if (card.dataset.scrollInit) return;
         card.dataset.scrollInit = '1';
 
-        // Karten die schon im Viewport sind gestaffelt einblenden
         var rect = card.getBoundingClientRect();
-        if (rect.top < window.innerHeight + 80) {
-            card.style.animationDelay = staggerDelay + 'ms';
-            card.classList.add('scroll-visible');
-            staggerDelay += 60;
+        if (rect.top < window.innerHeight + 50) {
+            // Karte ist im Viewport → gestaffelter Fade-in
+            card.classList.add('scroll-hidden');
+            var delay = staggerDelay;
+            staggerDelay += 40;
+            requestAnimationFrame(function() {
+                setTimeout(function() {
+                    card.classList.remove('scroll-hidden');
+                    card.classList.add('scroll-visible');
+                }, delay);
+            });
         } else {
-            // Karten ausserhalb: verstecken + beobachten
+            // Karte ist ausserhalb → verstecken + beobachten
             card.classList.add('scroll-hidden');
             _scrollObserver.observe(card);
         }
     });
 }
+
+
+// === Button Loading States ===
+function setButtonLoading(btn, loadingText) {
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    btn.dataset.originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spin">&#x21bb;</span> ' + (loadingText || 'Laden...');
+}
+
+function restoreButton(btn) {
+    if (!btn) return;
+    btn.disabled = false;
+    if (btn.dataset.originalText) {
+        btn.innerHTML = btn.dataset.originalText;
+        delete btn.dataset.originalText;
+    }
+}
+
+
+// === HTMX Event-Handler ===
+
+// Loading-State fuer Buttons die HTMX-Requests ausloesen
+document.body.addEventListener('htmx:beforeRequest', function(evt) {
+    var trigger = evt.detail.elt;
+    if (!trigger) return;
+
+    // Nur Buttons mit hx-post/hx-get behandeln
+    if (trigger.tagName === 'BUTTON' || trigger.classList.contains('btn')) {
+        var text = 'Laden...';
+        if (trigger.id === 'btn-collect' || trigger.textContent.indexOf('sammeln') >= 0) {
+            text = 'Sammle...';
+        } else if (trigger.textContent.indexOf('Zusammenfass') >= 0) {
+            text = 'Fasse zusammen...';
+        }
+        setButtonLoading(trigger, text);
+    }
+});
+
+// Button wiederherstellen nach Request
+document.body.addEventListener('htmx:afterRequest', function(evt) {
+    var trigger = evt.detail.elt;
+    if (trigger && (trigger.tagName === 'BUTTON' || trigger.classList.contains('btn'))) {
+        // Kurze Verzoegerung damit Swap zuerst passiert
+        setTimeout(function() { restoreButton(trigger); }, 200);
+    }
+});
+
+// Fehlerbehandlung bei HTMX-Requests
+document.body.addEventListener('htmx:responseError', function(evt) {
+    var trigger = evt.detail.elt;
+    if (trigger) restoreButton(trigger);
+
+    var status = evt.detail.xhr ? evt.detail.xhr.status : 0;
+    var msg = 'Fehler beim Laden.';
+    if (status === 0) {
+        msg = 'Server nicht erreichbar. Bitte spaeter erneut versuchen.';
+    } else if (status >= 500) {
+        msg = 'Serverfehler (' + status + '). Bitte spaeter erneut versuchen.';
+    }
+
+    // Fehlermeldung einblenden
+    var target = evt.detail.target;
+    if (target) {
+        var notice = document.createElement('div');
+        notice.className = 'notice error';
+        notice.setAttribute('role', 'alert');
+        notice.textContent = msg;
+        target.prepend(notice);
+
+        // Auto-hide nach 8 Sekunden
+        setTimeout(function() {
+            notice.style.transition = 'opacity 0.3s';
+            notice.style.opacity = '0';
+            setTimeout(function() { notice.remove(); }, 300);
+        }, 8000);
+    }
+});
+
+// Sende-Fehler (Netzwerk-Fehler)
+document.body.addEventListener('htmx:sendError', function(evt) {
+    var trigger = evt.detail.elt;
+    if (trigger) restoreButton(trigger);
+});
 
 
 // Themen-Gruppierung an/aus
@@ -160,6 +250,7 @@ document.body.addEventListener('htmx:afterSwap', function() {
     document.querySelectorAll('.dropdown.open').forEach(function(d) {
         d.classList.remove('open');
     });
+    // Erfolgs-Meldungen auto-hide
     var notices = document.querySelectorAll('.notice.success');
     notices.forEach(function(notice) {
         setTimeout(function() {
