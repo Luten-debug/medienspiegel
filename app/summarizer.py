@@ -1,6 +1,7 @@
-"""KI-Zusammenfassungen und Kategorisierung via Claude API."""
+"""KI-Zusammenfassungen und Kategorisierung via LLM (Anthropic Claude + Groq Llama Fallback)."""
 
 import json
+import os
 import re
 import time
 import requests
@@ -23,9 +24,138 @@ TOPIC_CATEGORIES = [
     "Sonstiges",
 ]
 
+# LLM-Provider-Tracking: Anthropic nicht jedes Mal probieren wenn Credits leer
+_anthropic_disabled = False
 
-def categorize_uncategorized(db_path, api_key, model="claude-haiku-4-5-20251001"):
-    """Kategorisiere alle Artikel ohne Thema in Batches (schnell, ohne Zusammenfassung)."""
+
+# ========== Universeller LLM-Aufruf ==========
+
+def _call_llm(prompt, max_tokens=500, api_key=None, groq_api_key=None, model=None):
+    """Universeller LLM-Aufruf: Anthropic Claude -> Groq Llama 3.3 Fallback.
+
+    Probiert zuerst Anthropic (wenn Key vorhanden und Credits ok).
+    Bei Credit-Fehler oder fehlendem Key: automatisch Groq/Llama (kostenlos).
+
+    Returns: str (generierter Text)
+    Raises: RuntimeError wenn kein Provider verfuegbar
+    """
+    global _anthropic_disabled
+
+    # Groq API-Key aus Umgebungsvariable holen falls nicht uebergeben
+    if not groq_api_key:
+        groq_api_key = os.environ.get('GROQ_API_KEY', '')
+
+    # 1. Anthropic versuchen (wenn Key vorhanden und nicht disabled)
+    if api_key and not _anthropic_disabled:
+        try:
+            return _call_anthropic(prompt, max_tokens, api_key, model)
+        except RuntimeError as e:
+            err_msg = str(e).lower()
+            if 'credit' in err_msg or 'balance' in err_msg or 'billing' in err_msg:
+                print("  [LLM] Anthropic Credits leer — wechsle zu Groq/Llama")
+                _anthropic_disabled = True
+                # Fall through to Groq
+            else:
+                raise
+
+    # 2. Groq/Llama als Fallback (kostenlos!)
+    if groq_api_key:
+        return _call_groq(prompt, max_tokens, groq_api_key)
+
+    # 3. Kein Provider verfuegbar
+    if api_key and _anthropic_disabled:
+        raise RuntimeError(
+            "Anthropic Credits leer und kein GROQ_API_KEY konfiguriert. "
+            "Groq-Key kostenlos holen: console.groq.com")
+    raise RuntimeError(
+        "Kein LLM-API-Key konfiguriert. "
+        "GROQ_API_KEY (kostenlos: console.groq.com) oder ANTHROPIC_API_KEY setzen.")
+
+
+def _call_anthropic(prompt, max_tokens, api_key, model=None):
+    """Rufe Anthropic Claude API auf."""
+    model = model or "claude-haiku-4-5-20251001"
+    resp = requests.post(
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json"
+        },
+        json={
+            "model": model,
+            "max_tokens": max_tokens,
+            "messages": [{"role": "user", "content": prompt}]
+        },
+        timeout=30
+    )
+
+    if resp.status_code != 200:
+        try:
+            err_body = resp.json()
+            err_msg = err_body.get('error', {}).get('message', '')
+            if 'credit' in err_msg.lower() or 'balance' in err_msg.lower():
+                raise RuntimeError("Anthropic API: Credit balance too low")
+        except (ValueError, KeyError):
+            pass
+        resp.raise_for_status()
+
+    data = resp.json()
+    return data.get('content', [{}])[0].get('text', '')
+
+
+def _call_groq(prompt, max_tokens, groq_api_key):
+    """Rufe Groq API (Llama 3.3 70B) auf — kostenlos!
+
+    Groq bietet kostenlose Llama 3.3 70B Inference.
+    Rate-Limit: 30 Requests/Min, 6000 Tokens/Min.
+    """
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens,
+        "temperature": 0.3
+    }
+    headers = {
+        "Authorization": "Bearer {}".format(groq_api_key),
+        "Content-Type": "application/json"
+    }
+
+    resp = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers=headers, json=payload, timeout=30
+    )
+
+    # Rate-Limit: warten und nochmal versuchen
+    if resp.status_code == 429:
+        retry_after = int(resp.headers.get('retry-after', 10))
+        print("  [GROQ] Rate-Limit, warte {}s...".format(retry_after))
+        time.sleep(retry_after)
+        resp = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers=headers, json=payload, timeout=30
+        )
+
+    if resp.status_code != 200:
+        try:
+            err_body = resp.json()
+            err_msg = err_body.get('error', {}).get('message', str(resp.status_code))
+            raise RuntimeError("Groq API: {}".format(err_msg[:120]))
+        except (ValueError, KeyError):
+            resp.raise_for_status()
+
+    data = resp.json()
+    choices = data.get('choices', [])
+    if choices:
+        return choices[0].get('message', {}).get('content', '')
+    return ''
+
+
+# ========== Kategorisierung ==========
+
+def categorize_uncategorized(db_path, api_key=None, groq_api_key=None,
+                             model="claude-haiku-4-5-20251001"):
+    """Kategorisiere alle Artikel ohne Thema in Batches."""
     articles = get_uncategorized_articles(db_path, limit=100)
     if not articles:
         return 0
@@ -52,29 +182,14 @@ Antworte NUR mit JSON-Array (kein Markdown): [{{"id":123,"thema":"..."}}, ...]""
             categories=categories_str, articles=articles_list)
 
         try:
-            resp = requests.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json"
-                },
-                json={
-                    "model": model,
-                    "max_tokens": 1000,
-                    "messages": [{"role": "user", "content": prompt}]
-                },
-                timeout=30
-            )
-            resp.raise_for_status()
-            text = resp.json().get('content', [{}])[0].get('text', '[]')
+            text = _call_llm(prompt, max_tokens=1000,
+                             api_key=api_key, groq_api_key=groq_api_key, model=model)
             results = _parse_json_response(text)
 
             # Kann ein Array oder ein Dict sein
             if isinstance(results, dict):
                 results = [results]
             elif not isinstance(results, list):
-                # Versuche Array zu parsen
                 cleaned = re.sub(r'^```(?:json)?\s*', '', text.strip())
                 cleaned = re.sub(r'\s*```\s*$', '', cleaned)
                 try:
@@ -87,6 +202,12 @@ Antworte NUR mit JSON-Array (kein Markdown): [{{"id":123,"thema":"..."}}, ...]""
                     update_article_topic(db_path, item['id'], item['thema'])
                     categorized += 1
 
+        except RuntimeError as e:
+            # Credit/Key-Fehler weiterreichen
+            err = str(e).lower()
+            if 'credit' in err or 'key' in err or 'groq' in err:
+                raise
+            print("  [FEHLER] Kategorisierung: {}".format(str(e)[:80]))
         except requests.exceptions.HTTPError as e:
             if e.response is not None and e.response.status_code == 429:
                 time.sleep(int(e.response.headers.get('retry-after', 15)))
@@ -95,10 +216,17 @@ Antworte NUR mit JSON-Array (kein Markdown): [{{"id":123,"thema":"..."}}, ...]""
         except Exception as e:
             print("  [FEHLER] Kategorisierung: {}".format(str(e)[:80]))
 
+        # Groq Rate-Limit: kurze Pause zwischen Batches
+        if groq_api_key and not api_key:
+            time.sleep(2)
+
     return categorized
 
 
-def summarize_new_articles(db_path, api_key, model="claude-haiku-4-5-20251001", progress_cb=None):
+# ========== Zusammenfassungen ==========
+
+def summarize_new_articles(db_path, api_key=None, groq_api_key=None,
+                           model="claude-haiku-4-5-20251001", progress_cb=None):
     """Generiere KI-Zusammenfassungen fuer alle Artikel ohne Summary.
 
     Args:
@@ -113,11 +241,18 @@ def summarize_new_articles(db_path, api_key, model="claude-haiku-4-5-20251001", 
     for article in articles:
         try:
             article['_db_path'] = db_path
-            summary, reach, topic = _summarize_article(article, api_key, model)
+            summary, reach, topic = _summarize_article(
+                article, api_key=api_key, groq_api_key=groq_api_key, model=model)
             update_article_summary(db_path, article['id'], summary, reach, topic)
             summarized += 1
             if progress_cb:
                 progress_cb(summarized, total)
+        except RuntimeError as e:
+            # Credit/Key-Fehler -> nach oben durchreichen
+            err = str(e).lower()
+            if 'credit' in err or 'billing' in err or 'key' in err or 'groq' in err:
+                raise
+            print("  [FEHLER] Zusammenfassung: {}".format(str(e)[:80]))
         except requests.exceptions.HTTPError as e:
             error_msg = str(e)
             if e.response is not None and e.response.status_code in (400, 401, 403):
@@ -133,21 +268,25 @@ def summarize_new_articles(db_path, api_key, model="claude-haiku-4-5-20251001", 
             else:
                 print("  [FEHLER] Zusammenfassung: {}".format(error_msg[:80]))
         except Exception as e:
-            if 'credit' in str(e).lower() or 'billing' in str(e).lower():
-                raise
             print("  [FEHLER] Zusammenfassung: {}".format(str(e)[:80]))
+
+        # Groq Rate-Limit: kurze Pause zwischen Artikeln
+        if groq_api_key and not api_key:
+            time.sleep(2)
 
     # News-Ueberblick generieren
     if summarized > 0:
         try:
-            generate_news_overview(db_path, api_key, model)
+            generate_news_overview(db_path, api_key=api_key,
+                                   groq_api_key=groq_api_key, model=model)
         except Exception as e:
             print("  [FEHLER] News-Ueberblick: {}".format(e))
 
     return summarized
 
 
-def generate_news_overview(db_path, api_key, model="claude-haiku-4-5-20251001"):
+def generate_news_overview(db_path, api_key=None, groq_api_key=None,
+                           model="claude-haiku-4-5-20251001"):
     """Generiere einen KI-Gesamtueberblick ueber die aktuellen Nachrichten."""
     articles = get_articles(db_path, limit=30)
     if not articles:
@@ -178,23 +317,13 @@ Schreibe auf Deutsch, als reinen Fliesstext. KEIN Markdown, keine Ueberschriften
         articles=articles_text
     )
 
-    resp = requests.post(
-        "https://api.anthropic.com/v1/messages",
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json"
-        },
-        json={
-            "model": model,
-            "max_tokens": 400,
-            "messages": [{"role": "user", "content": prompt}]
-        },
-        timeout=30
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    overview = data.get('content', [{}])[0].get('text', '').strip()
+    try:
+        overview = _call_llm(prompt, max_tokens=400,
+                             api_key=api_key, groq_api_key=groq_api_key, model=model)
+        overview = overview.strip()
+    except Exception as e:
+        print("  [FEHLER] News-Ueberblick: {}".format(str(e)[:80]))
+        return
 
     if overview:
         conn = get_db(db_path)
@@ -206,6 +335,8 @@ Schreibe auf Deutsch, als reinen Fliesstext. KEIN Markdown, keine Ueberschriften
         conn.close()
         print("  [INFO] News-Ueberblick generiert")
 
+
+# ========== Themen-Normalisierung ==========
 
 # Keywords die auf bestimmte Kategorien hinweisen (fuer Fuzzy-Matching)
 _TOPIC_KEYWORDS = {
@@ -284,7 +415,10 @@ def remap_all_topics(db_path):
     return remapped
 
 
-def _summarize_article(article, api_key, model="claude-haiku-4-5-20251001"):
+# ========== Einzelartikel-Zusammenfassung ==========
+
+def _summarize_article(article, api_key=None, groq_api_key=None,
+                       model="claude-haiku-4-5-20251001"):
     """Generiere Zusammenfassung, Reichweite und Themencluster fuer einen Artikel."""
     lang = article.get('language', 'de') or 'de'
 
@@ -315,24 +449,8 @@ JSON: {{"zusammenfassung":"...","reichweite":"Ueberregional|Regional|Fachpresse"
         categories=categories_str
     )
 
-    resp = requests.post(
-        "https://api.anthropic.com/v1/messages",
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json"
-        },
-        json={
-            "model": model,
-            "max_tokens": 500,
-            "messages": [{"role": "user", "content": prompt}]
-        },
-        timeout=30
-    )
-    resp.raise_for_status()
-    data = resp.json()
-
-    text = data.get('content', [{}])[0].get('text', '{}')
+    text = _call_llm(prompt, max_tokens=500,
+                     api_key=api_key, groq_api_key=groq_api_key, model=model)
 
     result = _parse_json_response(text)
 
@@ -354,8 +472,10 @@ JSON: {{"zusammenfassung":"...","reichweite":"Ueberregional|Regional|Fachpresse"
     return summary, reach, topic
 
 
+# ========== JSON-Parsing ==========
+
 def _parse_json_response(text):
-    """Parse JSON aus der Claude-Antwort, auch wenn es in Markdown-Codeblocks steckt."""
+    """Parse JSON aus der LLM-Antwort, auch wenn es in Markdown-Codeblocks steckt."""
     # Markdown-Codeblocks entfernen (```json ... ``` oder ``` ... ```)
     cleaned = re.sub(r'^```(?:json)?\s*', '', text.strip())
     cleaned = re.sub(r'\s*```\s*$', '', cleaned)
@@ -384,6 +504,8 @@ def _parse_json_response(text):
 
     return {}
 
+
+# ========== Bereinigungsfunktionen ==========
 
 def cleanup_meta_summaries(db_path):
     """Setze Zusammenfassungen zurueck die Meta-Kommentare enthalten (zur Neugenerierung)."""
