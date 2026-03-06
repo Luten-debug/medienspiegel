@@ -99,10 +99,10 @@ class GoogleNewsCollector(BaseCollector):
             # Snippet aus der Beschreibung extrahieren
             snippet = self._extract_snippet(entry.get('summary', ''))
 
-            # Erkennung: Ist das ein Tweet (Quelle x.com/twitter.com)?
-            src_lower = (source_name or '').lower()
-            is_tweet = src_lower in ('x.com', 'twitter.com', 'x', 'twitter')
-            stype = 'twitter' if is_tweet else 'google_news'
+            # X/Twitter-Links ueberspringen (werden vom Twitter-Collector geholt)
+            if link and ('x.com/' in link or 'twitter.com/' in link):
+                continue
+            stype = 'google_news'
 
             articles.append(CollectedArticle(
                 url=link,
