@@ -34,7 +34,19 @@
     {% include "partials/_article_card.html" %}
 {% endfor %}
 </div>
-{% else %}
+{% endif %}
+
+{# Mehr laden Button (Pagination) #}
+{% if articles and articles|length >= 50 %}
+<div id="load-more" class="load-more-container"
+     hx-get="/api/articles/more?offset={{ articles|length }}&range={{ time_range|default('7d') }}&source={{ source_type|default('') }}&topic={{ topic|default('') }}&search={{ search|default('') }}&sort={{ sort_by|default('published_at') }}"
+     hx-trigger="revealed"
+     hx-swap="outerHTML">
+    <button class="btn btn-secondary load-more-btn">Mehr Artikel laden</button>
+</div>
+{% endif %}
+
+{% if not articles and not topic_groups %}
 <div class="empty-state">
     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
     <h3>Keine Artikel gefunden</h3>
