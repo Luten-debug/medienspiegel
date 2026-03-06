@@ -2,7 +2,8 @@
 
 import sqlite3
 import json
-from datetime import datetime
+from difflib import SequenceMatcher
+from datetime import datetime, timedelta
 
 
 def get_db(db_path):
@@ -79,6 +80,7 @@ def init_db(db_path):
     for migration in [
         "ALTER TABLE articles ADD COLUMN language TEXT DEFAULT 'de'",
         "ALTER TABLE articles ADD COLUMN topic_cluster TEXT",
+        "ALTER TABLE articles ADD COLUMN full_text TEXT",
     ]:
         try:
             conn.execute(migration)
@@ -138,11 +140,31 @@ def fail_collection_run(db_path, run_id, errors):
 
 
 def insert_articles(db_path, articles, run_id):
-    """Füge Artikel ein. Gibt Anzahl neuer (nicht-doppelter) Artikel zurück."""
+    """Füge Artikel ein mit Titel-Deduplizierung. Gibt Anzahl neuer Artikel zurück."""
     conn = get_db(db_path)
     new_count = 0
+
+    # Lade existierende Titel der letzten 48h fuer Duplikat-Erkennung
+    since_dedup = (datetime.utcnow() - timedelta(hours=48)).isoformat()
+    existing_rows = conn.execute(
+        "SELECT title FROM articles WHERE collected_at >= ?", (since_dedup,)
+    ).fetchall()
+    existing_titles = [r['title'].lower() for r in existing_rows if r['title']]
+
     for a in articles:
         try:
+            # Titel-Similarity Check: Skip wenn >85% aehnlich zu existierendem Artikel
+            title_lower = (a.title or '').lower()
+            is_duplicate = False
+            if title_lower and len(title_lower) > 20:
+                for existing in existing_titles:
+                    if SequenceMatcher(None, title_lower, existing).ratio() >= 0.85:
+                        is_duplicate = True
+                        break
+
+            if is_duplicate:
+                continue
+
             changes_before = conn.total_changes
             conn.execute(
                 """INSERT OR IGNORE INTO articles
@@ -155,6 +177,7 @@ def insert_articles(db_path, articles, run_id):
             )
             if conn.total_changes > changes_before:
                 new_count += 1
+                existing_titles.append(title_lower)
         except sqlite3.Error:
             pass
     conn.commit()
@@ -163,7 +186,8 @@ def insert_articles(db_path, articles, run_id):
 
 
 def get_articles(db_path, date=None, since=None, source_type=None, relevance=None,
-                 search=None, topic=None, sort_by='published_at', sort_dir='DESC', limit=200):
+                 search=None, topic=None, sort_by='published_at', sort_dir='DESC',
+                 limit=50, offset=0):
     """Hole Artikel mit optionalen Filtern."""
     conn = get_db(db_path)
     query = "SELECT * FROM articles WHERE 1=1"
@@ -201,12 +225,36 @@ def get_articles(db_path, date=None, since=None, source_type=None, relevance=Non
         query += " ORDER BY CASE WHEN published_at IS NULL THEN 1 ELSE 0 END, COALESCE(published_at, collected_at) {}".format(sort_dir)
     else:
         query += " ORDER BY {} {}".format(sort_by, sort_dir)
-    query += " LIMIT ?"
-    params.append(limit)
+    query += " LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
 
     rows = conn.execute(query, params).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_articles_without_fulltext(db_path, limit=30):
+    """Hole Artikel die noch keinen Volltext haben (fuer Scraping)."""
+    conn = get_db(db_path)
+    rows = conn.execute(
+        """SELECT id, url, source_type FROM articles
+           WHERE full_text IS NULL AND source_type != 'twitter'
+           ORDER BY collected_at DESC LIMIT ?""",
+        (limit,)
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def update_article_fulltext(db_path, article_id, full_text):
+    """Speichere den gescrapten Volltext eines Artikels."""
+    conn = get_db(db_path)
+    conn.execute(
+        "UPDATE articles SET full_text = ? WHERE id = ?",
+        (full_text, article_id)
+    )
+    conn.commit()
+    conn.close()
 
 
 def get_articles_without_summary(db_path, limit=50):
