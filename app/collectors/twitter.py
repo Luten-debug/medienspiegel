@@ -397,6 +397,9 @@ class TwitterCollector(BaseCollector):
                     published_iso = dateparser.parse(published).isoformat()
                 except (ValueError, TypeError):
                     pass
+        # Fallback: kein Datum -> aktuelle Zeit (verhindert falsche Sortierung)
+        if not published_iso:
+            published_iso = datetime.utcnow().isoformat()
 
         tweet_lang = tweet.get('lang', lang or 'de')
         if tweet_lang not in ('de', 'en', 'pl'):
