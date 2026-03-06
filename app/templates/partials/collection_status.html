@@ -18,9 +18,12 @@
     </div>
 </div>
 {% elif status == 'done' %}
-<div class="notice success" role="status">
-    {{ message }}
-    <script>setTimeout(function(){ window.location.reload(); }, 1500);</script>
+<div class="notice success" role="status"
+     hx-get="/api/articles"
+     hx-trigger="load delay:1.5s"
+     hx-target="#article-list"
+     hx-swap="innerHTML">
+    {{ message }} — Artikel werden geladen...
 </div>
 {% else %}
 <div class="notice" role="alert">{{ message }}</div>
