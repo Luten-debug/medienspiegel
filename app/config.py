@@ -50,6 +50,11 @@ def load_config(path):
     if env_api_key:
         config['api_keys']['anthropic'] = env_api_key
 
+    # Groq API-Key (kostenlos: console.groq.com)
+    env_groq_key = os.environ.get('GROQ_API_KEY')
+    if env_groq_key:
+        config['api_keys']['groq'] = env_groq_key
+
     env_mail_sender = os.environ.get('MAIL_SENDER')
     if env_mail_sender:
         config.setdefault('mail', {})
