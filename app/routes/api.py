@@ -70,6 +70,15 @@ def collect():
                 _collection_progress['found'] = found
                 _collection_progress['new'] = new
 
+                # Volltext scrapen (fuer bessere KI-Zusammenfassungen)
+                if new > 0:
+                    try:
+                        _collection_progress['current_term'] = 'Artikeltexte laden...'
+                        from ..scraper import scrape_batch
+                        scrape_batch(db_path, limit=30, delay=1.0)
+                    except Exception as e:
+                        print("  [WARN] Scraping: {}".format(str(e)[:80]))
+
                 # Auto-Kategorisierung + Zitate generieren
                 api_key = config.get('api_keys', {}).get('anthropic', '')
                 groq_api_key = config.get('api_keys', {}).get('groq', '')
@@ -319,7 +328,47 @@ def articles():
     topic_groups = group_articles_by_topic(articles)
 
     return render_template('partials/article_list.html',
-                           articles=articles, topic_groups=topic_groups)
+                           articles=articles, topic_groups=topic_groups,
+                           time_range=time_range, source_type=source_type,
+                           topic=topic, search=search, sort_by=sort_by)
+
+
+@api_bp.route('/articles/more')
+def articles_more():
+    """Lade weitere Artikel (Pagination via HTMX)."""
+    db_path = current_app.config['DB_PATH']
+
+    offset = int(request.args.get('offset', 0))
+    time_range = request.args.get('range', '7d')
+    source_type = request.args.get('source', '')
+    topic = request.args.get('topic', '')
+    search = request.args.get('search', '')
+    sort_by = request.args.get('sort', 'published_at')
+
+    from .dashboard import _calculate_since
+    since = _calculate_since(time_range)
+
+    articles = get_articles(
+        db_path,
+        since=since,
+        source_type=source_type or None,
+        topic=topic or None,
+        search=search or None,
+        sort_by=sort_by,
+        offset=offset,
+        limit=50
+    )
+
+    if not articles:
+        return ''  # Keine weiteren Artikel — leere Antwort
+
+    # Neuen Offset berechnen
+    new_offset = offset + len(articles)
+
+    return render_template('partials/_articles_more.html',
+                           articles=articles, offset=new_offset,
+                           time_range=time_range, source_type=source_type,
+                           topic=topic, search=search, sort_by=sort_by)
 
 
 @api_bp.route('/articles/<int:article_id>/summarize', methods=['POST'])
