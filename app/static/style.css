@@ -851,6 +851,16 @@ main {
 }
 .empty-state p { font-size: 0.88rem; }
 
+/* Load More (Pagination) */
+.load-more-container {
+    display: flex;
+    justify-content: center;
+    padding: 2rem 0 1rem;
+}
+.load-more-btn {
+    min-width: 200px;
+}
+
 /* Footer */
 footer {
     max-width: 1260px;
