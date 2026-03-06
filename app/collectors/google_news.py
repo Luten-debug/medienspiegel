@@ -95,6 +95,10 @@ class GoogleNewsCollector(BaseCollector):
                     published_iso = dateparser.parse(published).isoformat()
                 except (ValueError, TypeError):
                     pass
+            # Fallback: kein Datum -> aktuelle Zeit
+            if not published_iso:
+                from datetime import datetime
+                published_iso = datetime.utcnow().isoformat()
 
             # Snippet aus der Beschreibung extrahieren
             snippet = self._extract_snippet(entry.get('summary', ''))
