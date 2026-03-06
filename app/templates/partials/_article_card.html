@@ -12,20 +12,7 @@
     {% set avatar_url = '' %}
 {% endif %}
 <div class="tweet-card">
-    {% if tid %}
-    {# Echter Tweet-Embed via Twitter Widget #}
-    <div class="tweet-embed-wrap" id="embed-{{ article.id }}"
-         data-tweet-id="{{ tid }}" data-handle="{{ handle.lstrip('@') }}">
-        <div class="tweet-embed-content">
-            {# Schöner Platzhalter während Embed lädt #}
-            <div class="tweet-loading">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#71767b"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                <span>Post wird geladen...</span>
-            </div>
-        </div>
-    </div>
-    {% else %}
-    {# Fallback: Stylischer dunkler X-Post #}
+    {# Immer Dark Card verwenden (zuverlaessiger als Twitter-Embed) #}
     <div class="tweet-dark-card">
         <div class="tweet-dark-header">
             {% if avatar_url %}
@@ -51,7 +38,6 @@
             Auf X ansehen
         </a>
     </div>
-    {% endif %}
     <div class="tweet-card-footer">
         {% if article.topic_cluster %}
         <span class="tweet-topic-badge">{{ article.topic_cluster }}</span>
