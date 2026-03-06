@@ -1,4 +1,5 @@
 {# Nachgeladene Artikel-Karten (Pagination via HTMX) #}
+<div class="article-list">
 {% set ns = namespace(aidx=0) %}
 {% for article in articles %}
     {% if article.source_type == 'twitter' %}
@@ -9,6 +10,7 @@
     {% endif %}
     {% include "partials/_article_card.html" %}
 {% endfor %}
+</div>
 
 {# Naechster Mehr-laden Button (wenn noch weitere Artikel vorhanden) #}
 {% if articles|length >= 50 %}
