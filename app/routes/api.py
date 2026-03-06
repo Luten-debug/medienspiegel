@@ -72,7 +72,9 @@ def collect():
 
                 # Auto-Kategorisierung + Zitate generieren
                 api_key = config.get('api_keys', {}).get('anthropic', '')
-                if api_key and new > 0:
+                groq_api_key = config.get('api_keys', {}).get('groq', '')
+                has_llm = api_key or groq_api_key
+                if has_llm and new > 0:
                     try:
                         from ..summarizer import cleanup_meta_summaries, remap_all_topics
                         cleanup_meta_summaries(db_path)
@@ -83,14 +85,14 @@ def collect():
                     _collection_progress['current_term'] = 'Kategorisierung...'
                     try:
                         from ..summarizer import categorize_uncategorized
-                        categorize_uncategorized(db_path, api_key)
+                        categorize_uncategorized(db_path, api_key, groq_api_key)
                     except Exception as e:
                         print("  [WARN] Auto-Kategorisierung: {}".format(str(e)[:80]))
 
                     _collection_progress['current_term'] = 'Zitate generieren...'
                     try:
                         from ..summarizer import summarize_new_articles
-                        summarize_new_articles(db_path, api_key)
+                        summarize_new_articles(db_path, api_key, groq_api_key)
                     except Exception as e:
                         print("  [WARN] Auto-Zitate: {}".format(str(e)[:80]))
 
@@ -202,15 +204,16 @@ def cleanup_meta():
     db_path = current_app.config['DB_PATH']
     config = current_app.config['MEDIENSPIEGEL']
     api_key = config.get('api_keys', {}).get('anthropic', '')
+    groq_api_key = config.get('api_keys', {}).get('groq', '')
 
     from ..summarizer import cleanup_meta_summaries
     cleaned = cleanup_meta_summaries(db_path)
 
-    if cleaned > 0 and api_key:
+    if cleaned > 0 and (api_key or groq_api_key):
         # Sofort neue Zitate generieren
         try:
             from ..summarizer import summarize_new_articles
-            summarize_new_articles(db_path, api_key)
+            summarize_new_articles(db_path, api_key, groq_api_key)
         except Exception as e:
             return '<div class="notice success">{} kaputte Zitate bereinigt, aber Neugenerierung fehlgeschlagen: {}</div>'.format(cleaned, str(e)[:80])
         return '<div class="notice success">{} kaputte Zitate bereinigt und neu generiert!<script>setTimeout(function(){{ window.location.reload(); }}, 1500);</script></div>'.format(cleaned)
@@ -227,10 +230,11 @@ def summarize():
     config = current_app.config['MEDIENSPIEGEL']
     db_path = current_app.config['DB_PATH']
     api_key = config.get('api_keys', {}).get('anthropic', '')
+    groq_api_key = config.get('api_keys', {}).get('groq', '')
 
-    if not api_key:
+    if not api_key and not groq_api_key:
         _summary_lock.release()
-        return '<div class="notice" style="background:#fff3cd;color:#856404;">Kein Anthropic API Key konfiguriert.</div>'
+        return '<div class="notice" style="background:#fff3cd;color:#856404;">Kein LLM-API-Key konfiguriert. Bitte GROQ_API_KEY (kostenlos: <a href="https://console.groq.com" target="_blank">console.groq.com</a>) oder ANTHROPIC_API_KEY setzen.</div>'
 
     unsummarized = len(get_articles_without_summary(db_path))
     if unsummarized == 0:
@@ -253,7 +257,8 @@ def summarize():
                 from ..summarizer import summarize_new_articles
                 total = 0
                 while True:
-                    count = summarize_new_articles(db_path, api_key, progress_cb=_progress_cb)
+                    count = summarize_new_articles(
+                        db_path, api_key, groq_api_key, progress_cb=_progress_cb)
                     total += count
                     _summary_count[0] = total
                     if count == 0:
@@ -280,8 +285,8 @@ def summary_status():
 
     if _summary_error[0]:
         err = _summary_error[0]
-        if 'credit balance' in err.lower() or 'too low' in err.lower():
-            return '<div class="notice" style="background:#fff3cd;color:#856404;">Anthropic API: Kein Guthaben. Bitte unter <a href="https://console.anthropic.com/settings/billing" target="_blank">console.anthropic.com</a> Credits aufladen.</div>'
+        if 'credit' in err.lower() or 'balance' in err.lower() or 'groq' in err.lower():
+            return '<div class="notice" style="background:#fff3cd;color:#856404;">LLM-Fehler: {}. <a href="https://console.groq.com" target="_blank">Groq-Key holen</a> (kostenlos)</div>'.format(err[:120])
         return '<div class="notice" role="alert">KI-Fehler: {}</div>'.format(err[:100])
 
     return '<div class="notice success">KI-Zusammenfassungen fertig! ({} Artikel)<script>setTimeout(function(){{ window.location.reload(); }}, 1500);</script></div>'.format(_summary_count[0])
@@ -323,9 +328,10 @@ def summarize_single(article_id):
     config = current_app.config['MEDIENSPIEGEL']
     db_path = current_app.config['DB_PATH']
     api_key = config.get('api_keys', {}).get('anthropic', '')
+    groq_api_key = config.get('api_keys', {}).get('groq', '')
 
-    if not api_key:
-        return '<span class="snippet">Kein API Key konfiguriert.</span>'
+    if not api_key and not groq_api_key:
+        return '<span class="snippet" style="color:#856404;">Kein LLM-Key. <a href="https://console.groq.com" target="_blank">Groq-Key holen</a> (kostenlos)</span>'
 
     from ..database import get_db
     conn = get_db(db_path)
@@ -340,11 +346,17 @@ def summarize_single(article_id):
         from ..database import update_article_summary
         article = dict(row)
         article['_db_path'] = db_path
-        summary, reach, topic = _summarize_article(article, api_key)
+        summary, reach, topic = _summarize_article(
+            article, api_key=api_key, groq_api_key=groq_api_key)
         update_article_summary(db_path, article_id, summary, reach, topic)
         return '<div class="ai-summary">{}</div>'.format(summary)
     except Exception as e:
-        return '<span class="snippet">Fehler: {}</span>'.format(str(e)[:100])
+        err = str(e)
+        if 'credit' in err.lower() or 'guthaben' in err.lower() or 'balance' in err.lower():
+            if groq_api_key:
+                return '<span class="snippet" style="color:#856404;">LLM-Fehler: {}</span>'.format(err[:80])
+            return '<span class="snippet" style="color:#856404;">Credits leer. <a href="https://console.groq.com" target="_blank">Groq-Key</a> als GROQ_API_KEY setzen (kostenlos)</span>'
+        return '<span class="snippet">Fehler: {}</span>'.format(err[:100])
 
 
 @api_bp.route('/articles/<int:article_id>/relevant', methods=['POST'])
