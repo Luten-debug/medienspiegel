@@ -1,0 +1,21 @@
+{# Nachgeladene Artikel-Karten (Pagination via HTMX) #}
+{% set ns = namespace(aidx=0) %}
+{% for article in articles %}
+    {% if article.source_type == 'twitter' %}
+        {% set _wc = '' %}
+    {% else %}
+        {% set _wc = ['card-w1','card-w2','card-w3','card-w4','card-w5','card-w6','card-w7','card-w8'][ns.aidx % 8] %}
+        {% set ns.aidx = ns.aidx + 1 %}
+    {% endif %}
+    {% include "partials/_article_card.html" %}
+{% endfor %}
+
+{# Naechster Mehr-laden Button (wenn noch weitere Artikel vorhanden) #}
+{% if articles|length >= 50 %}
+<div id="load-more" class="load-more-container"
+     hx-get="/api/articles/more?offset={{ offset }}&range={{ time_range|default('7d') }}&source={{ source_type|default('') }}&topic={{ topic|default('') }}&search={{ search|default('') }}&sort={{ sort_by|default('published_at') }}"
+     hx-trigger="revealed"
+     hx-swap="outerHTML">
+    <button class="btn btn-secondary load-more-btn">Mehr Artikel laden</button>
+</div>
+{% endif %}
