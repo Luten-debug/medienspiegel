@@ -30,7 +30,7 @@ def collect():
     """Starte eine neue Mediensammlung."""
     # Pruefe ob bereits eine Sammlung laeuft (globaler Lock)
     if _global_collection_lock.locked():
-        return '<div class="notice" role="alert">Sammlung läuft bereits...</div>', 409
+        return '<div class="notice running" hx-get="/api/collection-status" hx-trigger="every 2s" hx-swap="outerHTML">Sammlung laeuft bereits... Bitte warten.</div>'
 
     config = current_app.config['MEDIENSPIEGEL']
     db_path = current_app.config['DB_PATH']
@@ -225,7 +225,7 @@ def cleanup_meta():
 def summarize():
     """Generiere KI-Zusammenfassungen fuer alle Artikel ohne Summary."""
     if not _summary_lock.acquire(blocking=False):
-        return '<div class="notice running">KI-Zusammenfassungen laufen bereits...</div>', 409
+        return '<div class="notice running" hx-get="/api/summary-status" hx-trigger="every 3s" hx-swap="outerHTML">KI-Zusammenfassungen laufen bereits...</div>'
 
     config = current_app.config['MEDIENSPIEGEL']
     db_path = current_app.config['DB_PATH']
