@@ -170,11 +170,11 @@ def get_articles(db_path, date=None, since=None, source_type=None, relevance=Non
     params = []
 
     if since:
-        query += " AND COALESCE(published_at, collected_at) >= ?"
-        params.append(since)
+        query += " AND (published_at >= ? OR (published_at IS NULL AND collected_at >= ?))"
+        params.extend([since, since])
     elif date:
-        query += " AND DATE(COALESCE(published_at, collected_at)) = DATE(?)"
-        params.append(date)
+        query += " AND (DATE(published_at) = DATE(?) OR (published_at IS NULL AND DATE(collected_at) = DATE(?)))"
+        params.extend([date, date])
 
     if source_type:
         query += " AND source_type = ?"
@@ -198,7 +198,7 @@ def get_articles(db_path, date=None, since=None, source_type=None, relevance=Non
         sort_by = 'published_at'
     sort_dir = 'ASC' if sort_dir.upper() == 'ASC' else 'DESC'
     if sort_by == 'published_at':
-        query += " ORDER BY COALESCE(published_at, collected_at) {}".format(sort_dir)
+        query += " ORDER BY CASE WHEN published_at IS NULL THEN 1 ELSE 0 END, COALESCE(published_at, collected_at) {}".format(sort_dir)
     else:
         query += " ORDER BY {} {}".format(sort_by, sort_dir)
     query += " LIMIT ?"
@@ -304,14 +304,14 @@ def get_article_stats(db_path, date=None, since=None, until=None):
     where = ""
     params = []
     if since and until:
-        where = "WHERE COALESCE(published_at, collected_at) >= ? AND COALESCE(published_at, collected_at) < ?"
-        params = [since, until]
+        where = "WHERE (published_at >= ? OR (published_at IS NULL AND collected_at >= ?)) AND (published_at < ? OR (published_at IS NULL AND collected_at < ?))"
+        params = [since, since, until, until]
     elif since:
-        where = "WHERE COALESCE(published_at, collected_at) >= ?"
-        params = [since]
+        where = "WHERE (published_at >= ? OR (published_at IS NULL AND collected_at >= ?))"
+        params = [since, since]
     elif date:
-        where = "WHERE DATE(COALESCE(published_at, collected_at)) = DATE(?)"
-        params = [date]
+        where = "WHERE (DATE(published_at) = DATE(?) OR (published_at IS NULL AND DATE(collected_at) = DATE(?)))"
+        params = [date, date]
 
     stats = {}
     row = conn.execute(
