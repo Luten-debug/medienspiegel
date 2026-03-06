@@ -145,6 +145,9 @@ header {
     transform: translateY(-1px);
 }
 .btn-primary:active { transform: translateY(0); }
+.btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none !important; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn .spin { animation: spin 0.8s linear infinite; vertical-align: middle; }
 .btn-secondary {
     background: var(--bg-white);
     color: var(--text);
@@ -652,8 +655,8 @@ main {
 /* === Dunkle X-Post Karte (Twitter Dark Mode Style) === */
 .tweet-dark-card {
     background: #15202b;
-    border-radius: 16px;
-    padding: 16px 20px;
+    border-radius: var(--radius-lg);
+    padding: 12px 16px;
     border: 1px solid #2f3336;
     color: #e7e9ea;
 }
@@ -664,13 +667,13 @@ main {
     margin-bottom: 12px;
 }
 .tweet-avatar {
-    width: 40px; height: 40px;
+    width: 32px; height: 32px;
     border-radius: 50%;
     object-fit: cover;
     flex-shrink: 0;
 }
 .tweet-avatar-placeholder {
-    width: 40px; height: 40px;
+    width: 32px; height: 32px;
     border-radius: 50%;
     background: #1d2d3d;
     display: flex; align-items: center; justify-content: center;
@@ -690,11 +693,15 @@ main {
 }
 .tweet-x-logo { margin-left: auto; flex-shrink: 0; }
 .tweet-dark-text {
-    font-size: 0.95rem;
-    line-height: 1.6;
+    font-size: 0.88rem;
+    line-height: 1.5;
     color: #e7e9ea;
-    margin: 0 0 12px;
+    margin: 0 0 10px;
     word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 .tweet-dark-time {
     font-size: 0.75rem;
@@ -900,30 +907,19 @@ footer {
     .alert-input-sm { min-width: 100%; }
 }
 
-/* === Scroll-Animation (stark) === */
+/* === Scroll Reveal Animation (sanft) === */
 .scroll-hidden {
-    opacity: 0 !important;
-    transform: translateY(60px) scale(0.95) !important;
-    filter: blur(4px) !important;
-    transition: none !important;
+    opacity: 0;
+    transform: translateY(20px);
 }
 .scroll-visible {
-    opacity: 1 !important;
-    transform: translateY(0) scale(1) !important;
-    filter: blur(0) !important;
-    animation: scrollReveal 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.4s ease, transform 0.4s ease;
 }
-@keyframes scrollReveal {
-    from {
-        opacity: 0;
-        transform: translateY(60px) scale(0.95);
-        filter: blur(4px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-        filter: blur(0);
-    }
+@media (prefers-reduced-motion: reduce) {
+    .scroll-hidden { transform: none; }
+    .scroll-visible { transition: opacity 0.2s ease; }
 }
 
 /* === Alert-System === */
