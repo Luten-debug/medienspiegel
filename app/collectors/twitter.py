@@ -10,29 +10,36 @@ from dateutil import parser as dateparser
 
 from .base import BaseCollector, CollectedArticle
 
-# Bekannte Accounts die ueber Tesla Giga Berlin posten
+# Accounts sortiert nach Relevanz fuer Giga Berlin
 DEFAULT_ACCOUNTS = [
-    'Gf4Tesla',       # Gigafactory Berlin News
-    'alex_avoigt',    # Alex Voigt - Tesla/EV analyst
-    'SawyerMerritt',  # Sawyer Merritt - Tesla news
-    'Teslaconomics',  # Teslaconomics
-    'TeslaEurope',    # Tesla Europe
-    'Tesla',          # Tesla official
+    'Gf4Tesla',        # Gigafactory Berlin News (Kern-Account)
+    'TeslaEurope',     # Tesla Europe
+    'athierig',        # Andre Thierig - VP Manufacturing Giga Berlin
+    'Tesla',           # Tesla official
+    'elonmusk',        # Elon Musk
+    'alex_avoigt',     # Alex Voigt - Tesla/EV Analyst
+    'SawyerMerritt',   # Sawyer Merritt - Tesla News
+    'Teslaconomics',   # Teslaconomics
+    'taborbuia_t',     # Tesla Giga Berlin Fan-Account
 ]
 
-# Accounts deren Posts IMMER relevant sind (kein Keyword-Filter noetig)
+# Accounts deren Posts IMMER relevant sind (direkter Giga Berlin Bezug)
 ALWAYS_RELEVANT_ACCOUNTS = {
-    'gf4tesla', 'teslaeurope', 'tesla',
+    'gf4tesla',        # Nur ueber Giga Berlin
+    'athierig',        # Leiter Giga Berlin
+    'taborbuia_t',     # Giga Berlin Fan
 }
 
-# Suchbegriffe um relevante Tweets zu filtern
+# STRENGE Suchbegriffe — NUR Giga Berlin-bezogene Keywords
+# (Keine allgemeinen Tesla/Giga-Begriffe mehr!)
 RELEVANCE_KEYWORDS = [
-    'giga berlin', 'gigafactory', 'gruenheide', 'grünheide',
-    'giga factory', 'tesla berlin', 'tesla germany', 'tesla deutschland',
-    'tesla brandenburg', 'gigaberlin', 'giga-berlin',
-    'betriebsrat', 'ig metall', 'works council',
-    'robotaxi', 'cybercab', 'model y', 'model 2',
-    'giga', 'tesla',
+    'giga berlin', 'gigafactory berlin', 'gigafactory brandenburg',
+    'gruenheide', 'grünheide', 'giga factory berlin',
+    'tesla berlin', 'tesla brandenburg', 'tesla germany factory',
+    'tesla deutschland fabrik', 'tesla werk grünheide',
+    'giga-berlin', 'gigaberlin',
+    'betriebsrat tesla', 'ig metall tesla',
+    'works council tesla', 'tesla union germany',
 ]
 
 # Nitter / Xcancel Instanzen (werden der Reihe nach probiert)
@@ -68,7 +75,7 @@ class TwitterCollector(BaseCollector):
         """Sammle Tweets ueber mehrere Strategien mit Fallback."""
         twitter_config = self.config.get('twitter', {})
         accounts = twitter_config.get('accounts', DEFAULT_ACCOUNTS)
-        max_tweets = twitter_config.get('max_tweets', 20)
+        max_tweets = twitter_config.get('max_tweets', 15)
 
         articles = []
         strategy_used = None
@@ -100,8 +107,9 @@ class TwitterCollector(BaseCollector):
                 if tweets:
                     strategy_used = strategy_used or 'google'
 
-            for tweet in tweets:
-                if self._is_relevant(tweet, search_term):
+            # Nur die neuesten 5 Tweets pro Account pruefen
+            for tweet in tweets[:5]:
+                if self._is_relevant(tweet, search_term, account):
                     article = self._tweet_to_article(tweet, account, search_term, lang)
                     if article:
                         articles.append(article)
@@ -152,7 +160,7 @@ class TwitterCollector(BaseCollector):
             ns = {'atom': 'http://www.w3.org/2005/Atom'}
             items = root.findall('.//atom:entry', ns)
 
-        for item in items[:20]:
+        for item in items[:10]:
             tweet = self._rss_item_to_tweet(item, account)
             if tweet:
                 tweets.append(tweet)
@@ -302,7 +310,7 @@ class TwitterCollector(BaseCollector):
                 return []
 
             items = root.findall('.//item')
-            for item in items[:10]:
+            for item in items[:5]:
                 title_el = item.find('title')
                 link_el = item.find('link')
                 pubdate_el = item.find('pubDate')
@@ -345,19 +353,16 @@ class TwitterCollector(BaseCollector):
 
     # === Hilfsfunktionen ===
 
-    def _is_relevant(self, tweet, search_term):
-        """Pruefe ob ein Tweet relevant fuer Giga Berlin ist."""
-        # Bekannte Tesla-Accounts sind immer relevant
-        user = tweet.get('user', {})
-        handle = (user.get('screen_name', '') or '').lower()
+    def _is_relevant(self, tweet, search_term, account=None):
+        """Pruefe ob ein Tweet relevant fuer Giga Berlin ist (STRENGER Filter)."""
+        # Kern-Accounts die NUR ueber Giga Berlin posten: immer relevant
+        handle = (account or '').lower()
         if handle in ALWAYS_RELEVANT_ACCOUNTS:
             return True
 
         text = (tweet.get('full_text', '') or tweet.get('text', '')).lower()
-        # Pruefe Suchbegriff
-        if search_term and search_term.lower().strip('"') in text:
-            return True
-        # Pruefe allgemeine Relevanz-Keywords
+
+        # Fuer alle anderen Accounts: mindestens ein Giga Berlin Keyword muss vorkommen
         return any(kw in text for kw in RELEVANCE_KEYWORDS)
 
     def _tweet_to_article(self, tweet, fallback_account, search_term, lang=None):
