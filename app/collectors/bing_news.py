@@ -83,6 +83,10 @@ class BingNewsCollector(BaseCollector):
                         published_iso = dateparser.parse(published).isoformat()
                     except (ValueError, TypeError):
                         pass
+                # Fallback: kein Datum -> aktuelle Zeit
+                if not published_iso:
+                    from datetime import datetime
+                    published_iso = datetime.utcnow().isoformat()
 
                 # Snippet bereinigen
                 snippet = None
