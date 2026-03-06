@@ -30,7 +30,8 @@ _anthropic_disabled = False
 
 # ========== Universeller LLM-Aufruf ==========
 
-def _call_llm(prompt, max_tokens=500, api_key=None, groq_api_key=None, model=None):
+def _call_llm(prompt, max_tokens=500, api_key=None, groq_api_key=None, model=None,
+              system_message=None):
     """Universeller LLM-Aufruf: Anthropic Claude -> Groq Llama 3.3 Fallback.
 
     Probiert zuerst Anthropic (wenn Key vorhanden und Credits ok).
@@ -48,7 +49,11 @@ def _call_llm(prompt, max_tokens=500, api_key=None, groq_api_key=None, model=Non
     # 1. Anthropic versuchen (wenn Key vorhanden und nicht disabled)
     if api_key and not _anthropic_disabled:
         try:
-            return _call_anthropic(prompt, max_tokens, api_key, model)
+            # Anthropic: System-Message in den Prompt einbauen
+            full_prompt = prompt
+            if system_message:
+                full_prompt = system_message + '\n\n' + prompt
+            return _call_anthropic(full_prompt, max_tokens, api_key, model)
         except RuntimeError as e:
             err_msg = str(e).lower()
             if 'credit' in err_msg or 'balance' in err_msg or 'billing' in err_msg:
@@ -60,7 +65,7 @@ def _call_llm(prompt, max_tokens=500, api_key=None, groq_api_key=None, model=Non
 
     # 2. Groq/Llama als Fallback (kostenlos!)
     if groq_api_key:
-        return _call_groq(prompt, max_tokens, groq_api_key)
+        return _call_groq(prompt, max_tokens, groq_api_key, system_message)
 
     # 3. Kein Provider verfuegbar
     if api_key and _anthropic_disabled:
@@ -104,17 +109,22 @@ def _call_anthropic(prompt, max_tokens, api_key, model=None):
     return data.get('content', [{}])[0].get('text', '')
 
 
-def _call_groq(prompt, max_tokens, groq_api_key):
+def _call_groq(prompt, max_tokens, groq_api_key, system_message=None):
     """Rufe Groq API (Llama 3.3 70B) auf — kostenlos!
 
     Groq bietet kostenlose Llama 3.3 70B Inference.
     Rate-Limit: 30 Requests/Min, 6000 Tokens/Min.
     """
+    messages = []
+    if system_message:
+        messages.append({"role": "system", "content": system_message})
+    messages.append({"role": "user", "content": prompt})
+
     payload = {
         "model": "llama-3.3-70b-versatile",
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": messages,
         "max_tokens": max_tokens,
-        "temperature": 0.3
+        "temperature": 0.1
     }
     headers = {
         "Authorization": "Bearer {}".format(groq_api_key),
@@ -293,33 +303,45 @@ def generate_news_overview(db_path, api_key=None, groq_api_key=None,
         return
 
     summaries = []
-    for a in articles[:30]:
+    for a in articles[:20]:
         title = a.get('title', '')
         source = a.get('source_name', '')
-        summary = a.get('ai_summary', '')
-        if summary:
-            summaries.append('- {} ({}): {}'.format(title, source, summary[:150]))
+        # Bevorzugt Volltext-Snippet, dann KI-Zusammenfassung, dann nur Titel
+        full_text = a.get('full_text') or ''
+        summary = a.get('ai_summary') or ''
+        if full_text:
+            summaries.append('- {} ({}): {}'.format(title, source, full_text[:300]))
+        elif summary:
+            summaries.append('- {} ({}): {}'.format(title, source, summary[:200]))
         else:
             summaries.append('- {} ({})'.format(title, source))
 
-    articles_text = '\n'.join(summaries[:20])
+    articles_text = '\n'.join(summaries)
 
-    prompt = """Du bist Medienanalyst fuer Tesla und die Giga Factory Berlin-Brandenburg in Gruenheide.
-Du stehst Tesla grundsaetzlich positiv gegenueber – die Fabrik ist ein wichtiger Arbeitgeber und Innovationsstandort.
+    from datetime import datetime
+    today = datetime.utcnow().strftime('%d.%m.%Y')
 
-Hier sind die aktuellen Nachrichten:
+    system_msg = ("Du bist Medienanalyst fuer Tesla und die Giga Factory Berlin-Brandenburg "
+                  "in Gruenheide. Du schreibst praezise, faktisch und auf Deutsch.")
+
+    prompt = """Datum: {today}
+
+Aktuelle Nachrichten zur Tesla Giga Factory Berlin-Brandenburg:
 
 {articles}
 
-Schreibe einen kurzen Ueberblick (3-4 Saetze, max. 80 Worte) der die aktuelle Nachrichtenlage zusammenfasst.
-Betone positive Entwicklungen (Produktion, Jobs, Innovation) und ordne kritische Stimmen sachlich ein.
-Schreibe auf Deutsch, als reinen Fliesstext. KEIN Markdown, keine Ueberschriften, keine Aufzaehlungen.""".format(
-        articles=articles_text
+Schreibe einen Ueberblick (3-4 Saetze, max. 80 Worte):
+- Nenne die 2-3 wichtigsten konkreten Entwicklungen mit Fakten und Zahlen
+- Betone positive Entwicklungen (Produktion, Jobs, Innovation)
+- Ordne kritische Stimmen sachlich ein
+- Reiner Fliesstext, kein Markdown, keine Aufzaehlungen""".format(
+        today=today, articles=articles_text
     )
 
     try:
         overview = _call_llm(prompt, max_tokens=400,
-                             api_key=api_key, groq_api_key=groq_api_key, model=model)
+                             api_key=api_key, groq_api_key=groq_api_key, model=model,
+                             system_message=system_msg)
         overview = overview.strip()
     except Exception as e:
         print("  [FEHLER] News-Ueberblick: {}".format(str(e)[:80]))
@@ -421,36 +443,49 @@ def _summarize_article(article, api_key=None, groq_api_key=None,
                        model="claude-haiku-4-5-20251001"):
     """Generiere Zusammenfassung, Reichweite und Themencluster fuer einen Artikel."""
     lang = article.get('language', 'de') or 'de'
-
     categories_str = ', '.join(TOPIC_CATEGORIES)
 
+    # Volltext oder Snippet als Input waehlen
+    full_text = article.get('full_text') or ''
+    snippet = article.get('snippet') or ''
+
+    if full_text and len(full_text) > 200:
+        # Volltext vorhanden — nutze ihn (max 2000 Zeichen)
+        article_text = full_text[:2000]
+        text_label = "Artikeltext"
+    elif snippet and len(snippet) > 30:
+        article_text = snippet[:500]
+        text_label = "Auszug"
+    else:
+        article_text = ''
+        text_label = "Titel"
+
+    lang_hint = "Antworte auf Deutsch. " if lang != 'de' else ""
+
+    system_msg = ("Du bist Medienanalyst fuer die Tesla Giga Factory Berlin-Brandenburg. "
+                  "Du extrahierst Fakten praezise und schreibst auf Deutsch.")
+
     prompt = """{lang_hint}Artikel: "{title}" ({source})
-Text: {snippet}
+{text_label}: {article_text}
 
-Schreibe 2-3 kurze, praegnante Kernaussagen basierend auf den verfuegbaren Informationen.
+Extrahiere die 2-3 wichtigsten Fakten aus dem Text.
+Nenne konkrete Zahlen, Namen, Daten und Zitate wenn vorhanden.
+Trenne mehrere Aussagen mit Zeilenumbruch. Max 80 Worte. Kein Markdown.
 
-WICHTIG:
-- Nutze NUR die oben gegebenen Informationen (Titel + Text). Arbeite mit dem was da ist.
-- NIEMALS schreiben "Ich kann nicht...", "benoetige...", "Der Artikel...", "Es wird berichtet..." oder aehnliche Meta-Saetze.
-- NIEMALS nach mehr Text fragen oder sagen dass Informationen fehlen.
-- Wenn wenig Text vorhanden: formuliere 1-2 Kernaussagen basierend auf dem Titel.
-- Wenn Zitate im Text stehen: gib sie in Anfuehrungszeichen wieder.
-- Trenne mehrere Aussagen mit Zeilenumbruch.
-- Schreibe direkt und faktisch. Max 80 Worte.
+Thema (waehle eine): {categories}
 
-THEMA: Waehle eine dieser Kategorien. Nur wenn der Artikel wirklich in KEINE passt, darfst du eine neue kurze Kategorie erstellen:
-{categories}
-
-JSON: {{"zusammenfassung":"...","reichweite":"Ueberregional|Regional|Fachpresse","thema":"..."}}""".format(
-        lang_hint="Auf Deutsch. " if lang != 'de' else "",
+Antwort als JSON: {{"zusammenfassung":"...","reichweite":"Ueberregional|Regional|Fachpresse","thema":"..."}}""".format(
+        lang_hint=lang_hint,
         title=article.get('title', ''),
         source=article.get('source_name', 'Unbekannt'),
-        snippet=article.get('snippet', '')[:400],
+        text_label=text_label,
+        article_text=article_text,
         categories=categories_str
     )
 
     text = _call_llm(prompt, max_tokens=500,
-                     api_key=api_key, groq_api_key=groq_api_key, model=model)
+                     api_key=api_key, groq_api_key=groq_api_key, model=model,
+                     system_message=system_msg)
 
     result = _parse_json_response(text)
 
