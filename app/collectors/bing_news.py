@@ -93,10 +93,10 @@ class BingNewsCollector(BaseCollector):
                     if len(snippet) > 500:
                         snippet = snippet[:497] + '...'
 
-                # Erkennung: Ist das ein Tweet?
-                src_lower = (source_name or '').lower()
-                is_tweet = src_lower in ('x.com', 'twitter.com', 'x', 'twitter')
-                stype = 'twitter' if is_tweet else 'google_news'
+                # X/Twitter-Links ueberspringen (werden vom Twitter-Collector geholt)
+                if link and ('x.com/' in link or 'twitter.com/' in link):
+                    continue
+                stype = 'google_news'
 
                 articles.append(CollectedArticle(
                     url=link,
